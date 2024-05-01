@@ -1,4 +1,4 @@
-use std::{error::Error, num::{IntErrorKind, ParseIntError}};
+use std::{error::Error, num::IntErrorKind};
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -8,14 +8,18 @@ pub enum ParseError {
     InvalidURI,
     MalformedQuery,
 
-    HexInvalidStringLength,
-    HexParseIntError(ParseIntError),
-}
+    HexInvalidStringLength { index: usize },
+    HexParseIntError { index: usize, kind: IntErrorKind },
 
-impl From<ParseIntError> for ParseError {
-    fn from(value: ParseIntError) -> Self {
-        ParseError::HexParseIntError(value)
-    }
+    InvalidMimeType { reason: String },
+
+    ContentTooLarge { subject: String },
+    HeaderNotFound,
+    HeaderStructuredGetNotImplemented,
+
+    InvalidUserAgent { reason: String },
+
+    NotImplemented,
 }
 
 impl std::fmt::Display for ParseError {

@@ -1,33 +1,24 @@
-
-pub mod error;
-pub mod header;
-pub mod http;
-pub mod url;
-pub mod version;
 pub mod encoding;
+pub mod gateway;
+pub mod http;
+pub mod server;
 
-use std::{
-    io::{BufRead, BufReader},
-    net::{TcpListener, TcpStream},
-};
-
-fn handle_stream(mut stream: TcpStream) {
-    let buf = BufReader::new(&mut stream);
-
-    let request: Vec<_> = buf
-        .lines()
-        .map(|res| res.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
-
-    println!("{:?}", request)
+#[tokio::main]
+async fn main() {
+    let svc = server::Server::new("localhost:9090").await;
+    svc.run().await;
 }
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:9090").unwrap();
-
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
-        handle_stream(stream);
-    }
-}
+// ["GET / HTTP/1.1",
+// "Host: localhost:9090",
+// "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0",
+// "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+// "Accept-Language: en-US,en;q=0.5",
+// "Accept-Encoding: gzip, deflate, br",
+// "DNT: 1",
+// "Connection: keep-alive",
+// "Upgrade-Insecure-Requests: 1",
+// "Sec-Fetch-Dest: document",
+// "Sec-Fetch-Mode: navigate",
+// "Sec-Fetch-Site: none",
+// "Sec-Fetch-User: ?1"]

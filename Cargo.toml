@@ -1,5 +1,5 @@
 [package]
-name = "http"
+name = "rsgateway"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,12 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.12.1"
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }
 rstest = "0.19.0"
+
+[[bench]]
+name = "encoding"
+harness = false
