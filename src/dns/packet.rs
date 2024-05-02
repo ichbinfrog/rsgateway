@@ -1,13 +1,23 @@
-use std::{error::Error, mem::size_of, ops::{BitOrAssign, Shl}, process::Output};
+use std::{
+    error::Error,
+    fmt::Debug,
+    mem::size_of,
+    ops::{BitAnd, BitOrAssign, Sub},
+};
+
+use num_traits::{AsPrimitive, Num, Unsigned, Zero};
 
 pub const MAX_BUF_SIZE: usize = 512;
+pub const MAX_LABEL_SIZE: usize = 63;
 
 #[derive(Debug)]
 pub enum PacketError {
     ContentTooLarge { max_size: usize },
+    LabelTooLarge { max_size: usize },
     OutOfBound { index: usize },
     InvalidBound { start: usize, end: usize },
     TooManyJumps,
+    NotImplemented { reason: String },
 }
 
 impl std::fmt::Display for PacketError {
@@ -34,63 +44,93 @@ impl Default for PacketBuffer {
 }
 
 impl PacketBuffer {
-    pub fn write(&mut self, val: u8) -> Result<(), PacketError> {
-        if self.pos >= MAX_BUF_SIZE {
-            return Err(PacketError::ContentTooLarge {
-                max_size: MAX_BUF_SIZE,
-            })
+    pub fn set<T>(&mut self, pos: usize, val: T) -> Result<(), PacketError>
+    where
+        T: 'static
+            + Copy
+            + Zero
+            + BitAnd<Output = T>
+            + std::ops::Shr<usize, Output = T>
+            + AsPrimitive<u8>
+            + Sized
+            + Unsigned
+            + Debug,
+        u8: AsPrimitive<T> + Num + Sized,
+    {
+        let n = size_of::<T>().sub(1);
+        let mask: T = (0xFF as u8).as_();
+
+        for i in 0..n {
+            self.buf[pos + i] = ((val >> ((n - i) * 8)) & mask).as_();
         }
-
-        self.buf[self.pos] = val;
-        self.pos += 1;
         Ok(())
     }
 
-    pub fn write_u16(&mut self, val: u8) -> Result<(), PacketError> {
-        self.write((val >> 8) as u8)?;
-        self.write((val & 0xFF) as u8)?;
-        Ok(())
-    }
-
-    pub fn write_u32(&mut self, val: u8) -> Result<(), PacketError> {
-        self.write(((val >> 24) & 0xFF) as u8)?;
-        self.write(((val >> 16) & 0xFF) as u8)?;
-        self.write(((val >> 8) & 0xFF) as u8)?;
-        self.write((val & 0xFF) as u8)?;
-        Ok(())
-    }
-
-    pub fn write_qname(&mut self, qname: &str) -> Result<(), PacketError> {
-        for label in qname.split('.') {
-            let len = label.len();
-            self.write(len as u8)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn read(&mut self) -> Result<u8, PacketError> {
+    pub fn write<T>(&mut self, val: T) -> Result<(), PacketError>
+    where
+        T: 'static
+            + Copy
+            + Zero
+            + BitAnd<Output = T>
+            + std::ops::Shr<usize, Output = T>
+            + AsPrimitive<u8>
+            + Sized
+            + Unsigned
+            + Debug,
+        u8: AsPrimitive<T> + Num + Sized,
+    {
         if self.pos >= MAX_BUF_SIZE {
             return Err(PacketError::ContentTooLarge {
                 max_size: MAX_BUF_SIZE,
             });
         }
 
-        let res = self.buf[self.pos];
-        self.pos += 1;
-        Ok(res)
+        let n = size_of::<T>();
+        let mask: T = (0xFF as u8).as_();
+        for i in (0..n).rev() {
+            self.buf[self.pos] = ((val >> (i * 8)) & mask).as_();
+            self.pos += 1;
+        }
+
+        Ok(())
     }
 
-    pub fn read_u16(&mut self) -> Result<u16, PacketError> {
-        let res = ((self.read()? as u16) << 8) | ((self.read()? as u16) << 0);
-        Ok(res)
+    pub fn write_qname(&mut self, qname: &str) -> Result<(), PacketError> {
+        for label in qname.split('.') {
+            let len = label.len();
+            if len > MAX_LABEL_SIZE {
+                return Err(PacketError::LabelTooLarge {
+                    max_size: MAX_LABEL_SIZE,
+                });
+            }
+
+            self.write::<u8>(len as u8)?;
+            self.buf[self.pos..self.pos + len].copy_from_slice(label.as_bytes());
+            self.pos += len;
+        }
+
+        self.write(0_u8)?;
+        Ok(())
     }
 
-    pub fn read_u32(&mut self) -> Result<u32, PacketError> {
-        let res = ((self.read()? as u32) << 24)
-            | ((self.read()? as u32) << 16)
-            | ((self.read()? as u32) << 8)
-            | ((self.read()? as u32) << 0);
+    pub fn read<T>(&mut self) -> Result<T, PacketError>
+    where
+        T: 'static + Copy + Zero + BitOrAssign + std::ops::Shl<usize, Output = T> + Unsigned,
+        u8: AsPrimitive<T> + Num + Sized,
+    {
+        if self.pos >= MAX_BUF_SIZE {
+            return Err(PacketError::ContentTooLarge {
+                max_size: MAX_BUF_SIZE,
+            });
+        }
+
+        let n = size_of::<T>();
+        let mut res: T = T::zero();
+        for i in (0..n).rev() {
+            res |= self.buf[self.pos].as_() << (8 * i);
+            self.pos += 1;
+        }
+
         Ok(res)
     }
 
@@ -155,8 +195,6 @@ impl PacketBuffer {
 
                 jumped = true;
                 jumps += 1;
-
-                println!("{:?}, {:?}, {:?}", len, next, offset);
                 continue;
             } else {
                 cur += 1;
@@ -176,7 +214,7 @@ impl PacketBuffer {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ResponseCode {
     NoError = 0,
     FormatError = 1,
@@ -212,13 +250,13 @@ pub struct Header {
     pub recursion_desired: bool,
     pub recursion_available: bool,
 
-   pub  zero: bool,
+    pub zero: bool,
     pub authed_data: bool,
     pub checking_disabled: bool,
 
-   pub  response_code: ResponseCode,
+    pub response_code: ResponseCode,
 
-   pub  query_count: u16,
+    pub query_count: u16,
     pub answer_count: u16,
     pub authority_count: u16,
     pub additional_record_count: u16,
@@ -251,12 +289,47 @@ impl Default for Header {
     }
 }
 
+impl Header {
+    pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
+        buffer.write(self.id)?;
+
+        /*
+         15 14 13 12 11 10  9  8  7  6  5 4   3  2  1  0
+         7   6  5  4  3  2  1  0  7   6  5  4  3  2  1  0
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        */
+        buffer.write::<u8>(
+            ((self.query as u8) << 7) as u8
+                | (self.opcode << 3) as u8
+                | ((self.authoritative_answer as u8) << 2) as u8
+                | ((self.truncated_message as u8) << 1) as u8
+                | self.recursion_desired as u8,
+        )?;
+        buffer.write::<u8>(
+            ((self.recursion_available as u8) << 7) as u8
+                | ((self.zero as u8) << 6) as u8
+                | ((self.authed_data as u8) << 5) as u8
+                | ((self.checking_disabled as u8) << 4) as u8
+                | (self.response_code as u8) as u8,
+        )?;
+
+        buffer.write(self.query_count)?;
+        buffer.write(self.answer_count)?;
+        buffer.write(self.authority_count)?;
+        buffer.write(self.additional_record_count)?;
+
+        Ok(())
+    }
+}
+
 impl TryFrom<&mut PacketBuffer> for Header {
     type Error = PacketError;
 
     fn try_from(buffer: &mut PacketBuffer) -> Result<Self, Self::Error> {
-        let id = buffer.read_u16()?;
-        let flags = buffer.read_u16()?;
+        let id = buffer.read()?;
+        let flags = buffer.read::<u16>()?;
         let left = (flags >> 8) as u8;
         let right = (flags & 0xFF) as u8;
 
@@ -269,21 +342,25 @@ impl TryFrom<&mut PacketBuffer> for Header {
             opcode: (left >> 3) & 0x0F,
 
             recursion_available: (right & (1 << 7)) > 0,
-            checking_disabled: (right & (1 << 4)) > 0,
-            authed_data: (right & (1 << 5)) > 0,
             zero: (right & (1 << 6)) > 0,
+            authed_data: (right & (1 << 5)) > 0,
+            checking_disabled: (right & (1 << 4)) > 0,
             response_code: ResponseCode::from(right & 0x0F),
 
-            query_count: buffer.read_u16()?,
-            answer_count: buffer.read_u16()?,
-            authority_count: buffer.read_u16()?,
-            additional_record_count: buffer.read_u16()?,
+            query_count: buffer.read()?,
+            answer_count: buffer.read()?,
+            authority_count: buffer.read()?,
+            additional_record_count: buffer.read()?,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{fs::File, io::Write, net::UdpSocket};
+
+    use crate::dns::{dns::Packet, question::{Question, QuestionClass, QuestionKind}};
+
     use super::*;
     use rstest::*;
 
@@ -323,6 +400,33 @@ mod tests {
 
     #[rstest]
     #[case(
+        Header { 
+            id: u16::MAX,
+            opcode: 15,
+            query: true,
+            authoritative_answer: true,
+            truncated_message: true,
+            recursion_desired: true,
+            recursion_available: true,
+            zero: true,
+            authed_data: true,
+            checking_disabled: true,
+            response_code: ResponseCode::NoError,
+            query_count: u16::MAX,
+            answer_count: u16::MAX,
+            authority_count: u16::MAX,
+            additional_record_count: u16::MAX, 
+        }
+    )]
+    fn test_header_write(#[case] input: Header) {
+        let mut pb = PacketBuffer::default();
+        assert!(input.write(&mut pb).is_ok());
+        pb.pos = 0;
+        assert!(Header::try_from(&mut pb).is_ok_and(|x| x == input));
+    }
+
+    #[rstest]
+    #[case(
         &[
             3, 'w' as u8, 'w' as u8, 'w' as u8,
             7, 'h' as u8, 't' as u8, 't' as u8, 'p' as u8, 'b' as u8, 'i' as u8, 'n' as u8,
@@ -347,10 +451,49 @@ mod tests {
         assert_eq!(res, expected.to_string());
     }
 
-    #[test]
-    fn test_sizing() {
+    #[rstest]
+    #[case("test.google.com")]
+    #[case("www")]
+    fn test_qname_write(#[case] input: &str) {
         let mut pb = PacketBuffer::default();
-        pb.write_sized(8 as u8);
-        pb.write_sized(8 as u16);
+        assert!(pb.write_qname(input).is_ok());
+        pb.pos = 0;
+        let res = pb.read_qname().unwrap();
+        assert_eq!(res, input);
+    }
+
+    #[test]
+    fn test_lookup() {
+        let server = ("8.8.8.8", 53);
+        let socket = UdpSocket::bind(("0.0.0.0", 43210)).unwrap();
+        
+        let packet = Packet {
+            header: Header { 
+                id: 30000,
+                query_count: 1,
+                recursion_desired: true,
+                ..Default::default()
+            },
+            questions: Some(vec![
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::AAAA,
+                    class: QuestionClass::IN,
+                },
+            ]),
+            answers: None,
+            authorities: None,
+            resources: None,
+        };
+        let mut req: PacketBuffer = PacketBuffer::default();
+        packet.write(&mut req).unwrap();
+        let mut file = File::create("foo.txt").unwrap();
+        file.write_all(&req.buf[0..req.pos]).unwrap();
+
+        socket.send_to(&req.buf[0..req.pos], server).unwrap();
+        let mut res = PacketBuffer::default();
+        socket.recv_from(&mut res.buf).unwrap();
+
+        println!("{:?}", Packet::try_from(&mut res));
     }
 }
