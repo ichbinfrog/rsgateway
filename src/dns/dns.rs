@@ -66,6 +66,8 @@ pub enum Record {
 
 impl TryFrom<&mut PacketBuffer> for Record {
     type Error = PacketError;
+
+    #[inline]
     fn try_from(buf: &mut PacketBuffer) -> Result<Self, Self::Error> {
         let question = Question::try_from(buf as &mut PacketBuffer)?;
         let ttl = buf.read::<u32>()?;
@@ -257,6 +259,7 @@ pub struct Packet {
 impl TryFrom<&mut PacketBuffer> for Packet {
     type Error = PacketError;
 
+    #[inline]
     fn try_from(buffer: &mut PacketBuffer) -> Result<Self, Self::Error> {
         let mut packet = Packet {
             header: Header::try_from(buffer as &mut PacketBuffer)?,

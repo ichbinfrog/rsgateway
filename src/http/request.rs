@@ -11,10 +11,6 @@ use std::str::FromStr;
 use super::header::{HeaderKind, HeaderMap};
 use super::uri::path::Path;
 
-pub struct Builder {
-    inner: Result<Parts, ParseError>,
-}
-
 pub struct Parts {
     pub method: Method,
     pub standard: Standard,

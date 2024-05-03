@@ -1,45 +1,54 @@
-const LOOKUP: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
 #[inline]
-pub fn encode(input: String) -> String {
-    input
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(3)
-        .flat_map(|x| encode_window(x))
-        .collect::<String>()
+fn lookup(index: u8) -> char {
+    if index <= 25 {
+        (65 + index) as char
+    } else if index <= 51 {
+        (97 + index - 26) as char
+    } else if index <= 61 {
+        (48 + index - 52) as char
+    } else if index == 62 {
+        '+'
+    } else if index == 63 {
+        '/'
+    } else {
+        '='
+    }
 }
 
 #[inline]
-fn encode_window(window: &[char]) -> [char; 4] {
-    let mut binary: [usize; 24] = [0; 24];
-    let mut encoded: [char; 4] = ['=', '=', '=', '='];
+pub fn encode(input: &str) -> String {
+    let encoded_length = ((4 * input.len() / 3) + 3) & !3;
+    let mut res = String::with_capacity(encoded_length);
 
-    for i in 0..window.len() {
-        let res: Vec<usize> = (0..8)
-            .rev()
-            .map(|n| (window[i] as usize >> n) & 1)
-            .collect();
-        binary[(i * 8)..((i + 1) * 8)].copy_from_slice(&res);
+    for window in input.as_bytes().chunks(3) {
+        let n = window.len();
+        let mut encoded: [char; 4] = ['=', '=', '=', '='];
+
+        match n {
+            1 => {
+                encoded[0] = lookup(window[0] >> 2);
+                encoded[1] = lookup((window[0] & 0x3F) << 4);
+            }
+            2 => {
+                encoded[0] = lookup(window[0] >> 2);
+                encoded[1] = lookup(((window[0] & 0x3F) << 4) | (window[1] >> 4));
+                encoded[2] = lookup((window[1] & 0xF) << 2);
+            }
+            3 => {
+                encoded[0] = lookup(window[0] >> 2);
+                encoded[1] = lookup(((window[0] & 0x3F) << 4) | (window[1] >> 4));
+                encoded[2] = lookup(((window[1] & 0xF) << 2) | (window[2] >> 6));
+                encoded[3] = lookup(window[2] & 0x3F);
+            }
+            _ => {}
+        }
+
+        res.push(encoded[0]);
+        res.push(encoded[1]);
+        res.push(encoded[2]);
+        res.push(encoded[3]);
     }
-
-    for k in 0..4 {
-        let mut dec = 0;
-        for j in ((k * 6)..((k + 1) * 6)).rev() {
-            let exp = 5 - (j - (k * 6));
-            dec += &binary[j] * (2 as usize).pow(u32::try_from(exp).unwrap());
-        }
-
-        if dec == 0 {
-            continue;
-        }
-
-        if let Some(ch) = LOOKUP.chars().nth(dec) {
-            encoded[k] = ch;
-        }
-    }
-
-    encoded
+    res
 }
 
 #[cfg(test)]
@@ -53,6 +62,6 @@ mod tests {
     #[case("Sun", "U3Vu")]
     #[case("Sund", "U3VuZ===")]
     fn test_encoding(#[case] input: &str, #[case] expected: &str) {
-        assert_eq!(encode(input.to_string()), expected.to_string());
+        assert_eq!(encode(input), expected.to_string());
     }
 }

@@ -18,3 +18,7 @@ pretty_assertions = "1.4.0"
 [[bench]]
 name = "encoding"
 harness = false
+
+[[bench]]
+name = "dns"
+harness = false
