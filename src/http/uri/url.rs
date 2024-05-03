@@ -1,17 +1,14 @@
-use std::str::FromStr;
+use std::{error::Error, str::FromStr};
 
 use crate::http::{error::parse::ParseError, uri::path::Path};
 
-use super::path::Query;
+use super::authority::Authority;
 
 #[derive(Debug, PartialEq)]
 pub struct Url {
     scheme: String,
+    authority: Option<Authority>,
     path: Option<Path>,
-    query: Option<Query>,
-    port: Option<usize>,
-
-    authority: Option<String>,
 }
 
 impl Default for Url {
@@ -19,11 +16,27 @@ impl Default for Url {
         Self {
             scheme: "".to_string(),
             path: None,
-            query: None,
-            port: None,
-
             authority: None,
         }
+    }
+}
+
+impl TryFrom<Url> for String {
+    type Error = Box<dyn Error>;
+
+    fn try_from(url: Url) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+
+        res.push_str(&url.scheme);
+        res.push_str("://");
+        if let Some(authority) = url.authority {
+            res.push_str(&String::try_from(authority)?);
+        }
+
+        if let Some(path) = url.path {
+            res.push_str(&String::try_from(path)?);
+        }
+        Ok(res)
     }
 }
 
@@ -39,14 +52,14 @@ impl FromStr for Url {
             match rest.split_once("//") {
                 Some(("", rest)) => match rest.split_once('/') {
                     Some((authority, path)) => {
-                        url.authority = Some(authority.to_string());
+                        url.authority = Some(Authority::from_str(authority)?);
 
                         let mut path: String = path.to_owned();
                         path.insert(0, '/');
                         url.path = Some(Path::from_str(path.as_str()).unwrap());
                     }
                     _ => {
-                        url.authority = Some(rest.to_string());
+                        url.authority = Some(Authority::from_str(rest)?);
                     }
                 },
                 _ => {
@@ -61,6 +74,8 @@ impl FromStr for Url {
 
 #[cfg(test)]
 mod tests {
+    use crate::http::uri::path::Query;
+
     use super::*;
     use rstest::*;
 
@@ -69,7 +84,7 @@ mod tests {
         "https://httpbin.org",
         Url { 
             scheme: "https".to_string(),
-            authority: Some("httpbin.org".to_string()),
+            authority: Some(Authority::Domain("httpbin.org".to_string())),
             ..Default::default()
         }
     )]
@@ -77,7 +92,7 @@ mod tests {
         "https://httpbin.org/status",
         Url { 
             scheme: "https".to_string(),
-            authority: Some("httpbin.org".to_string()),
+            authority: Some(Authority::Domain("httpbin.org".to_string())),
             path: Some(Path {
                 raw_path: "/status".to_string(),
                 ..Default::default()
@@ -89,7 +104,7 @@ mod tests {
         "https://httpbin.org/",
         Url { 
             scheme: "https".to_string(),
-            authority: Some("httpbin.org".to_string()),
+            authority: Some(Authority::Domain("httpbin.org".to_string())),
             path: Some(Path {
                 raw_path: "/".to_string(),
                 ..Default::default()
@@ -101,7 +116,7 @@ mod tests {
         "https://httpbin.org/status?a=b",
         Url { 
             scheme: "https".to_string(),
-            authority: Some("httpbin.org".to_string()),
+            authority: Some(Authority::Domain("httpbin.org".to_string())),
             path: Some(Path {
                 raw_path: "/status".to_string(),
                 query: Some(Query::from_str("a=b").unwrap()),
@@ -111,6 +126,8 @@ mod tests {
         }
     )]
     fn test_url_parsing(#[case] input: &str, #[case] expected: Url) {
-        assert_eq!(Url::from_str(input).unwrap(), expected);
+        let url = Url::from_str(input).unwrap();
+        assert_eq!(url, expected);
+        assert_eq!(String::try_from(url).unwrap(), input);
     }
 }

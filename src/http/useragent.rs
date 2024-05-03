@@ -9,6 +9,22 @@ pub struct UserAgent {
     comment: Option<String>,
 }
 
+impl TryFrom<UserAgent> for String {
+    type Error = ParseError;
+
+    fn try_from(user: UserAgent) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+        res.push_str(&user.product);
+        res.push('/');
+
+        res.push_str(&String::try_from(user.version)?);
+        if let Some(comment) = &user.comment {
+            res.push_str(&comment);
+        }
+        Ok(res)
+    }
+}
+
 impl FromStr for UserAgent {
     type Err = ParseError;
 

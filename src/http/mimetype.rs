@@ -15,6 +15,26 @@ impl MimeType {
     }
 }
 
+impl TryFrom<MimeType> for String {
+    type Error = ParseError;
+
+    fn try_from(m: MimeType) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+        res.push_str(&m.kind);
+        res.push('/');
+        res.push_str(&m.sub);
+
+        if let Some((k, v)) = m.param {
+            res.push_str(";");
+            res.push_str(&k);
+            res.push('=');
+            res.push_str(&v);
+        }
+
+        Ok(res)
+    }
+}
+
 impl FromStr for MimeType {
     type Err = ParseError;
 
@@ -101,7 +121,9 @@ mod tests {
         }
     )]
     fn test_mime_type_from_str(#[case] input: &str, #[case] expected: MimeType) {
-        assert_eq!(MimeType::from_str(input).unwrap(), expected);
+        let m = MimeType::from_str(input).unwrap();
+        assert_eq!(m, expected);
+        assert_eq!(String::try_from(m).unwrap(), input.replace(" ", ""));
     }
 
     #[rstest]

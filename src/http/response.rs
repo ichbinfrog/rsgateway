@@ -8,5 +8,3 @@ pub struct Response<T> {
 
     pub body: T,
 }
-
-impl<T> Response<T> {}

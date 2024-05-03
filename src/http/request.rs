@@ -1,5 +1,4 @@
-use tokio::io::{AsyncReadExt, BufReader};
-use tokio::net::TcpStream;
+use tokio::io::{AsyncBufRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::http::error::parse::ParseError;
 use crate::http::method::Method;
@@ -11,10 +10,30 @@ use std::str::FromStr;
 use super::header::{HeaderKind, HeaderMap};
 use super::uri::path::Path;
 
+#[derive(Debug, PartialEq)]
 pub struct Parts {
     pub method: Method,
+    pub path: Path,
     pub standard: Standard,
+
     pub headers: HeaderMap,
+}
+
+impl TryFrom<Parts> for String {
+    type Error = Box<dyn Error>;
+
+    fn try_from(p: Parts) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+        res.push_str(&String::try_from(p.method)?);
+        res.push(' ');
+        res.push_str(&String::try_from(p.path)?);
+        res.push(' ');
+        res.push_str(&String::try_from(p.standard)?);
+        res.push_str("\r\n");
+        res.push_str(&String::try_from(p.headers)?);
+
+        Ok(res)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -29,6 +48,16 @@ impl Default for Standard {
             name: "".to_string(),
             version: Version::default(),
         }
+    }
+}
+
+impl TryFrom<Standard> for String {
+    type Error = ParseError;
+
+    fn try_from(standard: Standard) -> Result<Self, Self::Error> {
+        let mut res = standard.name;
+        res.push_str(&String::try_from(standard.version)?);
+        Ok(res)
     }
 }
 
@@ -52,29 +81,30 @@ impl FromStr for Standard {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Request {
-    pub method: Method,
-    pub standard: Standard,
-    pub headers: HeaderMap,
-    pub path: Path,
+pub struct Request<T> {
+    pub parts: Parts,
+    pub body: Option<T>,
 }
 
-impl Default for Request {
+impl<T> Default for Request<T> {
     fn default() -> Self {
         Self {
-            method: Method::UNDEFINED,
-            standard: Standard::default(),
-            path: Path::default(),
-            headers: HeaderMap::default(),
+            parts: Parts {
+                method: Method::UNDEFINED,
+                standard: Standard::default(),
+                path: Path::default(),
+                headers: HeaderMap::default(),
+            },
+            body: None,
         }
     }
 }
 
-impl FromStr for Request {
+impl<T> FromStr for Request<T> {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut request: Request = Default::default();
+        let mut request: Request<T> = Default::default();
 
         for (i, line) in s.lines().enumerate() {
             let mut line = line.to_string();
@@ -87,9 +117,9 @@ impl FromStr for Request {
                     for ch in line.chars() {
                         if ch.is_whitespace() {
                             match j {
-                                0 => request.method = Method::from_str(&acc)?,
-                                1 => request.path = Path::from_str(&acc)?,
-                                2 => request.standard = Standard::from_str(&acc)?,
+                                0 => request.parts.method = Method::from_str(&acc)?,
+                                1 => request.parts.path = Path::from_str(&acc)?,
+                                2 => request.parts.standard = Standard::from_str(&acc)?,
                                 _ => {}
                             }
                             j += 1;
@@ -100,7 +130,7 @@ impl FromStr for Request {
                     }
                 }
                 _ => {
-                    let _ = request.headers.parse(&line);
+                    let _ = request.parts.headers.parse(&line);
                 }
             }
         }
@@ -109,12 +139,22 @@ impl FromStr for Request {
     }
 }
 
-impl Request {
-    pub async fn body(
-        &self,
-        reader: &mut BufReader<&mut TcpStream>,
-    ) -> Result<Vec<u8>, Box<dyn Error>> {
-        let header = self.headers.get("content-length")?;
+impl<T> Request<T> {
+    pub async fn call(self, writer: &mut T) -> Result<(), Box<dyn Error>>
+    where
+        T: AsyncWrite + Unpin,
+    {
+        let res: String = String::try_from(self.parts)?;
+        writer.write_all(res.as_bytes()).await?;
+        writer.flush().await?;
+        Ok(())
+    }
+
+    pub async fn read_body(&self, reader: &mut T) -> Result<Vec<u8>, Box<dyn Error>>
+    where
+        T: AsyncBufRead + Unpin,
+    {
+        let header = self.parts.headers.get("content-length")?;
         match header {
             HeaderKind::ContentLength(n) => {
                 let mut buf: Vec<u8> = Vec::with_capacity(n);
@@ -134,10 +174,11 @@ impl Request {
 #[cfg(test)]
 mod tests {
     use crate::http::uri::path::Path;
-    use std::collections::HashMap;
+    use std::{collections::HashMap, io::Cursor};
 
     use super::*;
     use rstest::*;
+    use tokio::io::{stdout, Stdout};
 
     #[rstest]
     #[case(
@@ -146,31 +187,47 @@ mod tests {
             "Host: localhost:9090",
         ],
         Request { 
-            method: Method::GET,
-            standard: Standard { 
-                name: "HTTP".to_string(), 
-                version: Version {
-                    major: 1, 
-                    minor: Some(1), 
-                    patch: None 
+            parts: Parts {
+                method: Method::GET,
+                standard: Standard { 
+                    name: "HTTP".to_string(), 
+                    version: Version {
+                        major: 1, 
+                        minor: Some(1), 
+                        patch: None 
+                    },
+                },
+                path: Path {
+                    raw_path: "/".to_string(),
+                    ..Default::default()
+                },
+                headers: HeaderMap {
+                    raw: HashMap::from([
+                        ("host".to_string(), "localhost:9090".to_string()),
+                    ]),
+                    size: 18,
+                    ..Default::default()
                 },
             },
-            path: Path {
-                raw_path: "/".to_string(),
-                ..Default::default()
-            },
-            headers: HeaderMap {
-                raw: HashMap::from([
-                    ("host".to_string(), "localhost:9090".to_string()),
-                ]),
-                size: 18,
-                ..Default::default()
-            },
+            body: None,
         }
     )]
-    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request) {
-        let req = Request::from_str(input.join("\n").as_str()).unwrap();
+    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<()>) {
+        let req: Request<()> = Request::from_str(input.join("\n").as_str()).unwrap();
         assert_eq!(req, expected);
         println!("{:?}", req);
+    }
+
+    #[tokio::test]
+    async fn test_request_call() {
+        let input = vec![
+            "GET / HTTP/1.1",
+            "Host: localhost:9090",
+        ];
+        let req: Request<Vec<u8>> = Request::from_str(input.join("\n").as_str()).unwrap();
+
+        let mut out = Vec::<u8>::new();
+        println!("{:?}", req.call(&mut out).await.unwrap());
+        println!("{:?}", String::from_utf8(out));
     }
 }

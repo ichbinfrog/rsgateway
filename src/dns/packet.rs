@@ -359,7 +359,10 @@ impl TryFrom<&mut PacketBuffer> for Header {
 mod tests {
     use std::{fs::File, io::Write, net::UdpSocket};
 
-    use crate::dns::{dns::Packet, question::{Question, QuestionClass, QuestionKind}};
+    use crate::dns::{
+        dns::Packet,
+        question::{Question, QuestionClass, QuestionKind},
+    };
 
     use super::*;
     use rstest::*;
@@ -466,21 +469,19 @@ mod tests {
     fn test_lookup() {
         let server = ("8.8.8.8", 53);
         let socket = UdpSocket::bind(("0.0.0.0", 43210)).unwrap();
-        
+
         let packet = Packet {
-            header: Header { 
+            header: Header {
                 id: 30000,
                 query_count: 1,
                 recursion_desired: true,
                 ..Default::default()
             },
-            questions: Some(vec![
-                Question{
-                    name: "google.com".to_string(),
-                    kind: QuestionKind::AAAA,
-                    class: QuestionClass::IN,
-                },
-            ]),
+            questions: Some(vec![Question {
+                name: "google.com".to_string(),
+                kind: QuestionKind::AAAA,
+                class: QuestionClass::IN,
+            }]),
             answers: None,
             authorities: None,
             resources: None,

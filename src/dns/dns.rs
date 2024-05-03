@@ -1,4 +1,7 @@
-use std::{error::Error, net::{Ipv4Addr, Ipv6Addr}};
+use std::{
+    error::Error,
+    net::{Ipv4Addr, Ipv6Addr},
+};
 use tokio::net::UdpSocket;
 
 use super::{
@@ -143,8 +146,6 @@ impl TryFrom<&mut PacketBuffer> for Record {
 
 impl Record {
     pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
-        let start = buffer.pos;
-
         match self {
             Record::A {
                 question,
@@ -237,11 +238,7 @@ impl Record {
                 buffer.write(*minimum)?;
                 buffer.set(prelength, (buffer.pos - prelength + 2) as u16)?;
             }
-            Record::UNKNOWN {
-                question,
-                ttl,
-                rd_length,
-            } => {}
+            Record::UNKNOWN { .. } => {}
         }
         Ok(())
     }
@@ -331,15 +328,14 @@ impl Packet {
         Ok(())
     }
 
-    pub async fn lookup(&self, socket: UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>>
-    {
+    pub async fn lookup(&self, socket: UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
         let mut req: PacketBuffer = PacketBuffer::default();
         self.write(&mut req)?;
         socket.send_to(&req.buf[0..req.pos], server).await?;
 
         let mut res = PacketBuffer::default();
         socket.recv_from(&mut res.buf).await?;
-        
+
         let packet = Packet::try_from(&mut res)?;
         Ok(packet)
     }
@@ -354,11 +350,11 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
     use rstest::*;
-    use tokio::net::UdpSocket;
     use std::{
         net::{Ipv4Addr, Ipv6Addr},
         str::FromStr,
     };
+    use tokio::net::UdpSocket;
 
     #[rstest]
     #[case(
@@ -812,19 +808,17 @@ mod tests {
     #[tokio::test]
     async fn test_lookup() {
         let packet = Packet {
-            header: Header { 
+            header: Header {
                 id: 30000,
                 query_count: 1,
                 recursion_desired: true,
                 ..Default::default()
             },
-            questions: Some(vec![
-                Question{
-                    name: "google.com".to_string(),
-                    kind: QuestionKind::AAAA,
-                    class: QuestionClass::IN,
-                },
-            ]),
+            questions: Some(vec![Question {
+                name: "google.com".to_string(),
+                kind: QuestionKind::AAAA,
+                class: QuestionClass::IN,
+            }]),
             answers: None,
             authorities: None,
             resources: None,

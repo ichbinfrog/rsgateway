@@ -25,6 +25,23 @@ impl Default for HeaderMap {
     }
 }
 
+impl TryFrom<HeaderMap> for String {
+    type Error = ParseError;
+
+    fn try_from(headers: HeaderMap) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+
+        for (k, v) in headers.raw {
+            res.push_str(&k);
+            res.push(':');
+            res.push_str(&v);
+            res.push_str("\r\n");
+        }
+
+        Ok(res)
+    }
+}
+
 impl HeaderMap {
     pub fn parse(&mut self, s: &str) -> Result<(), ParseError> {
         if let Some((k, v)) = s.split_once(':') {
@@ -72,6 +89,53 @@ pub enum HeaderKind {
     ContentLength(usize),
     ContentType(Option<Vec<MimeType>>),
     UserAgent(UserAgent),
+}
+
+impl TryFrom<HeaderKind> for String {
+    type Error = ParseError;
+
+    fn try_from(header: HeaderKind) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+
+        match header {
+            HeaderKind::Allow(allowed) => {
+                if let Some(methods) = allowed {
+                    let n = methods.len();
+                    let mut i = 0;
+
+                    for method in methods {
+                        res.push_str(&String::try_from(method)?);
+                        if n != 1 && i != n - 1 {
+                            res.push(',');
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            HeaderKind::Accept(content_types) | HeaderKind::ContentType(content_types) => {
+                if let Some(mimetypes) = content_types {
+                    let n = mimetypes.len();
+                    let mut i = 0;
+
+                    for mimetype in mimetypes {
+                        res.push_str(&String::try_from(mimetype)?);
+                        if n != 1 && i != n - 1 {
+                            res.push(',');
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            HeaderKind::ContentLength(n) => {
+                res.push_str(&n.to_string());
+            }
+            HeaderKind::UserAgent(user) => {
+                res.push_str(&String::try_from(user)?);
+            }
+        }
+
+        Ok(res)
+    }
 }
 
 impl TryFrom<(&str, &str)> for HeaderKind {
@@ -174,5 +238,7 @@ mod tests {
                 ])
             }
         );
+
+        println!("{:?}", String::try_from(headers).unwrap());
     }
 }

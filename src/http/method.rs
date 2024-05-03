@@ -32,3 +32,21 @@ impl FromStr for Method {
         }
     }
 }
+
+impl TryFrom<Method> for String {
+    type Error = ParseError;
+
+    fn try_from(method: Method) -> Result<Self, Self::Error> {
+        match method {
+            Method::GET => Ok("GET".to_string()),
+            Method::HEAD => Ok("HEAD".to_string()),
+            Method::POST => Ok("POST".to_string()),
+            Method::PUT => Ok("PUT".to_string()),
+            Method::DELETE => Ok("DELETE".to_string()),
+            Method::CONNECT => Ok("CONNECT".to_string()),
+            Method::OPTIONS => Ok("OPTIONS".to_string()),
+            Method::TRACE => Ok("TRACE".to_string()),
+            _ => Err(ParseError::InvalidMethod),
+        }
+    }
+}

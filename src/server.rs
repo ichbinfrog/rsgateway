@@ -2,6 +2,7 @@ use crate::http::method::Method;
 use crate::http::request::Request;
 use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use tokio::{io::BufReader, net::TcpListener};
 
 pub const MAX_BUF_LENGTH: usize = 4096;
@@ -38,10 +39,11 @@ impl Server {
                     }
                 }
 
-                let r = Request::from_str(buf.as_str()).unwrap();
-                match r.method {
+                let r: Request<BufReader<&mut TcpStream>> =
+                    Request::from_str(buf.as_str()).unwrap();
+                match r.parts.method {
                     Method::POST | Method::PUT => {
-                        if let Ok(body) = r.body(&mut reader).await {
+                        if let Ok(body) = r.read_body(&mut reader).await {
                             println!("{:?} {:?}", r, body);
                         }
                     }

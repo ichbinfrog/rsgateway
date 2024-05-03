@@ -18,6 +18,23 @@ impl Default for Version {
     }
 }
 
+impl TryFrom<Version> for String {
+    type Error = ParseError;
+
+    fn try_from(version: Version) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+        res.push_str(&version.major.to_string());
+
+        if let Some(minor) = version.minor {
+            res.push_str(&minor.to_string());
+        }
+
+        if let Some(patch) = version.patch {
+            res.push_str(&patch.to_string());
+        }
+        Ok(res)
+    }
+}
 impl FromStr for Version {
     type Err = Box<dyn Error>;
 

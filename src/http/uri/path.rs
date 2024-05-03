@@ -1,10 +1,11 @@
-use crate::encoding::percent;
+use crate::encoding::percent::{self, escape};
 use std::{collections::HashMap, error::Error, str::FromStr};
 
 #[derive(Debug, PartialEq)]
 pub struct Query {
     raw: String,
     lookup: HashMap<String, Vec<String>>,
+    count: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -14,6 +15,30 @@ pub struct Path {
     pub query: Option<Query>,
 }
 
+impl TryFrom<Query> for String {
+    type Error = Box<dyn Error>;
+
+    fn try_from(query: Query) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+        let mut i = 0;
+
+        for (key, values) in query.lookup {
+            for value in values {
+                res.push_str(&escape(&key));
+                res.push('=');
+                res.push_str(&escape(&value));
+
+                if query.count > 1 && i != query.count - 1 {
+                    res.push('&');
+                }
+                i += 1;
+            }
+        }
+
+        Ok(res)
+    }
+}
+
 impl FromStr for Query {
     type Err = Box<dyn Error>;
 
@@ -21,6 +46,7 @@ impl FromStr for Query {
         let mut query = Query {
             raw: s.to_string(),
             lookup: HashMap::new(),
+            count: 0,
         };
 
         let mut cur = s.to_string().clone();
@@ -35,6 +61,7 @@ impl FromStr for Query {
             }
 
             if let Some((key, value)) = entry.split_once('=') {
+                query.count += 1;
                 query
                     .lookup
                     .entry(percent::unescape(key)?)
@@ -49,6 +76,28 @@ impl FromStr for Query {
         }
 
         Ok(query)
+    }
+}
+
+impl TryFrom<Path> for String {
+    type Error = Box<dyn Error>;
+
+    fn try_from(path: Path) -> Result<Self, Self::Error> {
+        let mut res = String::new();
+
+        res.push_str(&path.raw_path);
+        if let Some(query) = path.query {
+            let query = String::try_from(query)?;
+            res.push('?');
+            res.push_str(&query);
+        }
+
+        if let Some(fragment) = &path.raw_fragment {
+            res.push('#');
+            res.push_str(&fragment);
+        }
+
+        Ok(res)
     }
 }
 
@@ -108,6 +157,7 @@ mod tests {
         Query { 
             raw: "".to_string(), 
             lookup: HashMap::new(),
+            count: 0,
         }
     )]
     #[case("a=a1&a=a2", 
@@ -115,7 +165,8 @@ mod tests {
             raw: "a=a1&a=a2".to_string(), 
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from(["a1".to_string(), "a2".to_string()])),
-            ]) 
+            ]),
+            count: 2,
         }
     )]
     #[case("a=a1&a=a2&b=b1&c=c1&b=b2&c=c2", 
@@ -125,7 +176,8 @@ mod tests {
                 ("a".to_string(), Vec::from(["a1".to_string(), "a2".to_string()])),
                 ("b".to_string(), Vec::from(["b1".to_string(), "b2".to_string()])),
                 ("c".to_string(), Vec::from(["c1".to_string(), "c2".to_string()])),
-            ]) 
+            ]) ,
+            count: 6,
         }
     )]
     #[case("a=%3A&b=%26%26", 
@@ -134,11 +186,14 @@ mod tests {
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from([":".to_string()])),
                 ("b".to_string(), Vec::from(["&&".to_string()])),
-            ])
+            ]),
+            count: 2,
         }
     )]
     fn test_query_parsing(#[case] input: &str, #[case] expected: Query) {
-        assert_eq!(Query::from_str(input).unwrap(), expected);
+        let query = Query::from_str(input).unwrap();
+        assert_eq!(query, expected);
+        assert_eq!(String::try_from(query).unwrap(), input);
     }
 
     #[rstest]
@@ -176,10 +231,13 @@ mod tests {
                 lookup: HashMap::from([
                     ("a".to_string(), Vec::from(["b".to_string()])),
                 ]),
+                count: 1,
             }),
         }
     )]
     fn test_path_parsing(#[case] input: &str, #[case] expected: Path) {
-        assert_eq!(Path::from_str(input).unwrap(), expected);
+        let p = Path::from_str(input).unwrap();
+        assert_eq!(p, expected);
+        assert_eq!(String::try_from(p).unwrap(), input);
     }
 }
