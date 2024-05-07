@@ -56,7 +56,7 @@ impl FromStr for MimeType {
                         }
                         _ => {
                             return Err(ParseError::InvalidMimeType {
-                                reason: "missing parameter definition".to_string(),
+                                reason: "missing parameter definition",
                             })
                         }
                     }
@@ -67,7 +67,7 @@ impl FromStr for MimeType {
             _ => {
                 return Err(ParseError::InvalidMimeType {
                     reason: "invalid mimetype, format should be type/subtype;parameter=value"
-                        .to_string(),
+                        ,
                 })
             }
         }

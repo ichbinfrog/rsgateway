@@ -84,7 +84,7 @@ mod tests {
         "https://httpbin.org",
         Url { 
             scheme: "https".to_string(),
-            authority: Some(Authority::Domain("httpbin.org".to_string())),
+            authority: Some(Authority::Domain{host: "httpbin.org".to_string(), port: None}),
             ..Default::default()
         }
     )]
@@ -92,7 +92,7 @@ mod tests {
         "https://httpbin.org/status",
         Url { 
             scheme: "https".to_string(),
-            authority: Some(Authority::Domain("httpbin.org".to_string())),
+            authority: Some(Authority::Domain{host: "httpbin.org".to_string(), port: None}),
             path: Some(Path {
                 raw_path: "/status".to_string(),
                 ..Default::default()
@@ -104,7 +104,7 @@ mod tests {
         "https://httpbin.org/",
         Url { 
             scheme: "https".to_string(),
-            authority: Some(Authority::Domain("httpbin.org".to_string())),
+            authority: Some(Authority::Domain{host: "httpbin.org".to_string(), port: None}),
             path: Some(Path {
                 raw_path: "/".to_string(),
                 ..Default::default()
@@ -116,7 +116,7 @@ mod tests {
         "https://httpbin.org/status?a=b",
         Url { 
             scheme: "https".to_string(),
-            authority: Some(Authority::Domain("httpbin.org".to_string())),
+            authority: Some(Authority::Domain{host: "httpbin.org".to_string(), port: None}),
             path: Some(Path {
                 raw_path: "/status".to_string(),
                 query: Some(Query::from_str("a=b").unwrap()),

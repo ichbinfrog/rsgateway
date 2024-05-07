@@ -26,10 +26,12 @@ impl TryFrom<Version> for String {
         res.push_str(&version.major.to_string());
 
         if let Some(minor) = version.minor {
+            res.push('.');
             res.push_str(&minor.to_string());
         }
 
         if let Some(patch) = version.patch {
+            res.push('.');
             res.push_str(&patch.to_string());
         }
         Ok(res)

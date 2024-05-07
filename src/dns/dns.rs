@@ -1,8 +1,7 @@
 use std::{
     error::Error,
-    net::{Ipv4Addr, Ipv6Addr},
+    net::{Ipv4Addr, Ipv6Addr, UdpSocket},
 };
-use tokio::net::UdpSocket;
 
 use super::{
     packet::{Header, PacketBuffer, PacketError},
@@ -328,13 +327,13 @@ impl Packet {
         Ok(())
     }
 
-    pub async fn lookup(&self, socket: UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
+    pub fn lookup(&self, socket: UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
         let mut req: PacketBuffer = PacketBuffer::default();
         self.write(&mut req)?;
-        socket.send_to(&req.buf[0..req.pos], server).await?;
+        socket.send_to(&req.buf[0..req.pos], server)?;
 
         let mut res = PacketBuffer::default();
-        socket.recv_from(&mut res.buf).await?;
+        socket.recv_from(&mut res.buf)?;
 
         let packet = Packet::try_from(&mut res)?;
         Ok(packet)
@@ -351,10 +350,9 @@ mod tests {
     use pretty_assertions::assert_eq;
     use rstest::*;
     use std::{
-        net::{Ipv4Addr, Ipv6Addr},
+        net::{Ipv4Addr, Ipv6Addr, UdpSocket},
         str::FromStr,
     };
-    use tokio::net::UdpSocket;
 
     #[rstest]
     #[case(
@@ -805,8 +803,8 @@ mod tests {
         assert_eq!(Packet::try_from(&mut pb).unwrap(), input);
     }
 
-    #[tokio::test]
-    async fn test_lookup() {
+    #[test]
+    fn test_lookup() {
         let packet = Packet {
             header: Header {
                 id: 30000,
@@ -824,9 +822,9 @@ mod tests {
             resources: None,
         };
         let server = "8.8.8.8:53";
-        let socket = UdpSocket::bind(("0.0.0.0", 43210)).await.unwrap();
+        let socket = UdpSocket::bind(("0.0.0.0", 43210)).unwrap();
 
-        let res = packet.lookup(socket, server).await.unwrap();
+        let res = packet.lookup(socket, server).unwrap();
         println!("{:?}", res);
     }
 }

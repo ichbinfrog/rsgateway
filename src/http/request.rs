@@ -1,14 +1,16 @@
-use tokio::io::{AsyncBufRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-
 use crate::http::error::parse::ParseError;
 use crate::http::method::Method;
 use crate::http::version::Version;
 
 use std::error::Error;
+use std::io::{BufRead, Read, Write};
 use std::str::FromStr;
 
-use super::header::{HeaderKind, HeaderMap};
+use super::header::HeaderMap;
+use super::response::Response;
 use super::uri::path::Path;
+
+const MAX_REQUEST_LINE_SIZE: usize = 8096 * 4;
 
 #[derive(Debug, PartialEq)]
 pub struct Parts {
@@ -31,6 +33,7 @@ impl TryFrom<Parts> for String {
         res.push_str(&String::try_from(p.standard)?);
         res.push_str("\r\n");
         res.push_str(&String::try_from(p.headers)?);
+        res.push_str("\r\n");
 
         Ok(res)
     }
@@ -56,6 +59,7 @@ impl TryFrom<Standard> for String {
 
     fn try_from(standard: Standard) -> Result<Self, Self::Error> {
         let mut res = standard.name;
+        res.push('/');
         res.push_str(&String::try_from(standard.version)?);
         Ok(res)
     }
@@ -80,10 +84,18 @@ impl FromStr for Standard {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Request<T> {
     pub parts: Parts,
-    pub body: Option<T>,
+    pub body: Option<String>,
+
+    pub stream: Option<T>,
+}
+
+impl<T> PartialEq for Request<T> {
+    fn eq(&self, other: &Self) -> bool {
+        return self.parts == other.parts && self.body == other.body;
+    }
 }
 
 impl<T> Default for Request<T> {
@@ -96,41 +108,80 @@ impl<T> Default for Request<T> {
                 headers: HeaderMap::default(),
             },
             body: None,
+            stream: None,
         }
     }
 }
 
-impl<T> FromStr for Request<T> {
-    type Err = Box<dyn Error>;
+impl<T> Request<T> {
+    pub fn write(self, stream: &mut T) -> Result<(), Box<dyn Error>>
+    where
+        T: Write,
+    {
+        let req = String::try_from(self.parts)?;
+        stream.write(req.as_bytes())?;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(())
+    }
+
+    pub fn call(self, stream: &mut T) -> Result<Response<T>, Box<dyn Error>>
+    where
+        T: Write + Read,
+    {
+        let req = String::try_from(self.parts)?;
+        stream.write(req.as_bytes())?;
+
+        let resp = Response::parse(stream)?;
+        Ok(resp)
+    }
+
+    pub fn parse(stream: &mut T) -> Result<Self, Box<dyn Error>>
+    where
+        T: BufRead,
+    {
         let mut request: Request<T> = Default::default();
+        let mut line = String::with_capacity(MAX_REQUEST_LINE_SIZE);
+        let mut state: u8 = 0;
 
-        for (i, line) in s.lines().enumerate() {
-            let mut line = line.to_string();
-            line.push(' ');
-
-            match i {
-                0 => {
-                    let mut acc = String::with_capacity(line.len());
-                    let mut j = 0;
-                    for ch in line.chars() {
-                        if ch.is_whitespace() {
-                            match j {
-                                0 => request.parts.method = Method::from_str(&acc)?,
-                                1 => request.parts.path = Path::from_str(&acc)?,
-                                2 => request.parts.standard = Standard::from_str(&acc)?,
-                                _ => {}
-                            }
-                            j += 1;
-                            acc.clear()
-                        } else {
-                            acc.push(ch)
-                        }
-                    }
+        loop {
+            match stream.read_line(&mut line) {
+                Ok(0) => {
+                    break;
                 }
-                _ => {
-                    let _ = request.parts.headers.parse(&line);
+                Ok(_n) => match state {
+                    0 => {
+                        let mut acc = String::with_capacity(line.len());
+                        let mut j = 0;
+                        for ch in line.chars() {
+                            if ch.is_whitespace() {
+                                match j {
+                                    0 => request.parts.method = Method::from_str(&acc)?,
+                                    1 => request.parts.path = Path::from_str(&acc)?,
+                                    2 => request.parts.standard = Standard::from_str(&acc)?,
+                                    _ => {}
+                                }
+                                j += 1;
+                                acc.clear()
+                            } else {
+                                acc.push(ch)
+                            }
+                        }
+                        state += 1;
+                        line.clear();
+                    }
+                    1 => {
+                        if line == "\r\n" {
+                            state = 2;
+                        }
+                        let _ = request.parts.headers.parse(&line);
+                        line.clear();
+                    }
+                    _ => {
+                        request.body = Some(line.clone());
+                    }
+                },
+                Err(e) => {
+                    return Err(e.into());
                 }
             }
         }
@@ -139,46 +190,13 @@ impl<T> FromStr for Request<T> {
     }
 }
 
-impl<T> Request<T> {
-    pub async fn call(self, writer: &mut T) -> Result<(), Box<dyn Error>>
-    where
-        T: AsyncWrite + Unpin,
-    {
-        let res: String = String::try_from(self.parts)?;
-        writer.write_all(res.as_bytes()).await?;
-        writer.flush().await?;
-        Ok(())
-    }
-
-    pub async fn read_body(&self, reader: &mut T) -> Result<Vec<u8>, Box<dyn Error>>
-    where
-        T: AsyncBufRead + Unpin,
-    {
-        let header = self.parts.headers.get("content-length")?;
-        match header {
-            HeaderKind::ContentLength(n) => {
-                let mut buf: Vec<u8> = Vec::with_capacity(n);
-                buf.resize(n, 0);
-
-                reader.read_exact(&mut buf).await?;
-                Ok(buf)
-            }
-            _ => {
-                // TODO: implement chunk encoding
-                Err(ParseError::NotImplemented.into())
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::http::uri::path::Path;
-    use std::{collections::HashMap, io::Cursor};
+    use std::{collections::HashMap, io::BufReader, net::TcpStream};
 
     use super::*;
     use rstest::*;
-    use tokio::io::{stdout, Stdout};
 
     #[rstest]
     #[case(
@@ -210,24 +228,48 @@ mod tests {
                 },
             },
             body: None,
+            stream: None,
         }
     )]
-    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<()>) {
-        let req: Request<()> = Request::from_str(input.join("\n").as_str()).unwrap();
+    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<BufReader<&[u8]>>) {
+        let input = input.join("\n");
+        let lines = input.as_bytes();
+        let mut buf = BufReader::new(lines);
+
+        let req = Request::parse(&mut buf).unwrap();
         assert_eq!(req, expected);
-        println!("{:?}", req);
     }
 
-    #[tokio::test]
-    async fn test_request_call() {
-        let input = vec![
-            "GET / HTTP/1.1",
-            "Host: localhost:9090",
-        ];
-        let req: Request<Vec<u8>> = Request::from_str(input.join("\n").as_str()).unwrap();
+    #[test]
+    fn test_request_call() {
+        let mut stream = TcpStream::connect("127.0.0.1:9000").unwrap();
 
-        let mut out = Vec::<u8>::new();
-        println!("{:?}", req.call(&mut out).await.unwrap());
-        println!("{:?}", String::from_utf8(out));
+        let req: Request<TcpStream> = Request {
+            parts: Parts {
+                method: Method::GET,
+                standard: Standard {
+                    name: "HTTP".to_string(),
+                    version: Version {
+                        major: 1,
+                        minor: Some(1),
+                        patch: None,
+                    },
+                },
+                path: Path {
+                    raw_path: "/".to_string(),
+                    ..Default::default()
+                },
+                headers: HeaderMap {
+                    raw: HashMap::from([("host".to_string(), "127.0.0.1".to_string())]),
+                    size: 18,
+                    ..Default::default()
+                },
+            },
+            body: None,
+            stream: None,
+        };
+
+        let resp = req.call(&mut stream).unwrap();
+        println!("{:?}", resp);
     }
 }

@@ -6,12 +6,15 @@ pub enum ParseError {
     InvalidStandard,
     MalformedStandardVersion,
     InvalidURI,
+    InvalidIPV6Authority { reason: String },
+    InvalidInteger { reason: String, subject: &'static str },
+    MissingContentLengthHeader,
     MalformedQuery,
 
     HexInvalidStringLength { index: usize },
     HexParseIntError { index: usize, kind: IntErrorKind },
 
-    InvalidMimeType { reason: String },
+    InvalidMimeType { reason: &'static str },
 
     ContentTooLarge { subject: String },
     HeaderNotFound,
@@ -20,6 +23,8 @@ pub enum ParseError {
     InvalidUserAgent { reason: String },
 
     NotImplemented,
+
+    AuthorizationMissingRequiredParam { subject: &'static str },
 }
 
 impl std::fmt::Display for ParseError {

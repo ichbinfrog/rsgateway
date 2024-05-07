@@ -1,3 +1,5 @@
+use std::{error::Error, str::FromStr};
+
 #[derive(Debug)]
 pub enum StatusCode {
     Continue = 100,
@@ -67,4 +69,17 @@ pub enum StatusCode {
     LoopDetected = 508,
     NotExtended = 510,
     NetworkAuthenticationRequired = 511,
+}
+
+impl FromStr for StatusCode {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let u = usize::from_str_radix(s, 10)?;
+
+        match u {
+            200 => Ok(StatusCode::Ok),
+            _ => Ok(StatusCode::Teapot),
+        }
+    }
 }

@@ -1,12 +1,12 @@
+#![feature(let_chains)]
 pub mod encoding;
 pub mod gateway;
 pub mod http;
 pub mod server;
 
-#[tokio::main]
-async fn main() {
-    let svc = server::Server::new("localhost:9090").await;
-    svc.run().await;
+fn main() {
+    let svc = server::Server::new("localhost:9090");
+    svc.run();
 }
 
 // ["GET / HTTP/1.1",

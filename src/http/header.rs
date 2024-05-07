@@ -83,6 +83,7 @@ impl HeaderMap {
 
 #[derive(Debug, PartialEq)]
 pub enum HeaderKind {
+    Age(usize),
     Allow(Option<Vec<Method>>),
     Accept(Option<Vec<MimeType>>),
 
@@ -98,6 +99,7 @@ impl TryFrom<HeaderKind> for String {
         let mut res = String::new();
 
         match header {
+            HeaderKind::Age(n) => res = n.to_string(),
             HeaderKind::Allow(allowed) => {
                 if let Some(methods) = allowed {
                     let n = methods.len();
@@ -143,6 +145,15 @@ impl TryFrom<(&str, &str)> for HeaderKind {
 
     fn try_from((k, v): (&str, &str)) -> Result<Self, Self::Error> {
         match k {
+            "age" => match usize::from_str_radix(v, 10) {
+                Ok(v) => Ok(Self::Age(v)),
+                Err(e) => {
+                    return Err(ParseError::InvalidInteger {
+                        reason: e.to_string(),
+                        subject: "age header",
+                    })
+                }
+            },
             "allow" => Ok(Self::Allow {
                 0: Some(
                     v.split(',')
@@ -164,7 +175,15 @@ impl TryFrom<(&str, &str)> for HeaderKind {
                         .collect(),
                 ),
             }),
-            "content-length" => Ok(Self::ContentLength(usize::from_str_radix(v, 10).unwrap())),
+            "content-length" => match usize::from_str_radix(v, 10) {
+                Ok(v) => Ok(Self::ContentLength(v)),
+                Err(e) => {
+                    return Err(ParseError::InvalidInteger {
+                        reason: e.to_string(),
+                        subject: "age header",
+                    })
+                }
+            },
             "user-agent" => Ok(Self::UserAgent(UserAgent::from_str(v)?)),
             _ => Err(ParseError::HeaderStructuredGetNotImplemented),
         }
