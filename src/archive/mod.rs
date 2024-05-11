@@ -1,3 +1,3 @@
 pub mod gzip;
 pub mod huffman;
-pub mod lz;
+pub mod lz77;

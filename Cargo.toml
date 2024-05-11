@@ -13,6 +13,7 @@ num-traits = "0.2.18"
 criterion = { version = "0.4", features = ["html_reports"] }
 rstest = "0.19.0"
 pretty_assertions = "1.4.0"
+tempfile = "3.10.1"
 
 [[bench]]
 name = "encoding"
@@ -20,4 +21,8 @@ harness = false
 
 [[bench]]
 name = "dns"
+harness = false
+
+[[bench]]
+name = "lz"
 harness = false
