@@ -66,8 +66,7 @@ impl FromStr for MimeType {
 
             _ => {
                 return Err(ParseError::InvalidMimeType {
-                    reason: "invalid mimetype, format should be type/subtype;parameter=value"
-                        ,
+                    reason: "invalid mimetype, format should be type/subtype;parameter=value",
                 })
             }
         }

@@ -2,18 +2,14 @@ use std::str::FromStr;
 
 use crate::{encoding::base64, http::error::parse::ParseError};
 
-
 #[derive(Debug)]
 pub enum Authorization {
-    Basic {
-        user: String,
-        password: String,
-    }
+    Basic { user: String, password: String },
 }
 
 // impl FromStr for Authorization {
 //     type Err = ParseError;
-    
+
 //     fn from_str(s: &str) -> Result<Self, Self::Err> {
 //         match s.split_once(' ') {
 //             Some((scheme, rest)) => {

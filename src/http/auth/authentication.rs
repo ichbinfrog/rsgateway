@@ -53,16 +53,13 @@ impl FromStr for Scheme {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use rstest::*;
-    
+
     #[rstest]
-    #[case(
-        r#"Basic realm="WallyWorld""#
-    )]
+    #[case(r#"Basic realm="WallyWorld""#)]
     fn test_scheme_parsing(#[case] input: &str) {
         let scheme = Scheme::from_str(input).unwrap();
         println!("{:?}", scheme);

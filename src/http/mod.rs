@@ -9,5 +9,5 @@ pub mod useragent;
 pub mod version;
 
 pub mod auth;
-pub mod uri;
 pub mod client;
+pub mod uri;

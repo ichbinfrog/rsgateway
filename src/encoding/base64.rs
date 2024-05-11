@@ -20,15 +20,15 @@ fn lookup(index: u8) -> char {
 #[inline]
 fn inverse(ch: char) -> u8 {
     if 'A' <= ch && ch <= 'Z' {
-        return ch as u8 - 'A' as u8
+        return ch as u8 - 'A' as u8;
     } else if 'a' <= ch && ch <= 'z' {
-        return ch as u8 - 'a' as u8 + 26
+        return ch as u8 - 'a' as u8 + 26;
     } else if '0' <= ch && ch <= '9' {
-        return 52 + ch as u8 - '0' as u8
+        return 52 + ch as u8 - '0' as u8;
     } else if ch == '+' {
-        return 62
+        return 62;
     } else if ch == '/' {
-        return 63
+        return 63;
     }
     0
 }
@@ -44,7 +44,7 @@ pub fn decode(input: &str) -> String {
         let indexes: Vec<u8> = window.iter().map(|x| inverse(*x as char)).collect();
         match n {
             1 => {
-                decoded[0] = (indexes[0] & 0x7C) << 2;   
+                decoded[0] = (indexes[0] & 0x7C) << 2;
             }
             2 => {
                 decoded[0] = ((indexes[0] & 0x7C) << 2) | ((indexes[1] & 0x30) >> 4);
@@ -57,7 +57,7 @@ pub fn decode(input: &str) -> String {
             4 => {
                 decoded[0] = ((indexes[0] & 0x7C) << 2) | ((indexes[1] & 0x30) >> 4);
                 decoded[1] = ((indexes[1] & 0xF) << 4) | ((indexes[2] & 0x3C) >> 2);
-                decoded[2] = ((indexes[2]) << 6) | ((indexes[3] & 0x3F));
+                decoded[2] = ((indexes[2]) << 6) | (indexes[3] & 0x3F);
             }
             _ => {}
         }
@@ -118,7 +118,6 @@ mod tests {
     fn test_encoding(#[case] input: &str, #[case] expected: &str) {
         assert_eq!(encode(input), expected.to_string());
     }
-
 
     #[rstest]
     #[case("YQ==")]
