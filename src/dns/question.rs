@@ -1,4 +1,4 @@
-use super::packet::{PacketBuffer, PacketError};
+use super::{buffer::PacketBuffer, error::PacketError};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum QuestionKind {

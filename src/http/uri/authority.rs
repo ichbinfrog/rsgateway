@@ -20,6 +20,7 @@ impl TryFrom<Authority> for String {
             Authority::Domain { host, port } => {
                 let mut res = host;
                 if let Some(port) = port {
+                    res.push(':');
                     res.push_str(port.to_string().as_str());
                 }
                 Ok(res)
@@ -27,6 +28,7 @@ impl TryFrom<Authority> for String {
             Authority::IPv4 { ip, port } => {
                 let mut res = ip.to_string();
                 if let Some(port) = port {
+                    res.push(':');
                     res.push_str(port.to_string().as_str());
                 }
                 Ok(res)
@@ -34,6 +36,7 @@ impl TryFrom<Authority> for String {
             Authority::IPv6 { ip, port } => {
                 let mut res = ip.to_string();
                 if let Some(port) = port {
+                    res.push(':');
                     res.push_str(port.to_string().as_str());
                 }
                 Ok(res)

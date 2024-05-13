@@ -1,8 +1,4 @@
-use crate::http::method::Method;
-use crate::http::request::Request;
-// use crate::http::response::Response;
 use std::net::TcpListener;
-use std::str::FromStr;
 
 pub const MAX_BUF_LENGTH: usize = 4096;
 

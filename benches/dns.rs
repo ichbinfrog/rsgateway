@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rsgateway::dns::{dns::Packet, packet::PacketBuffer};
+use rsgateway::dns::{buffer::PacketBuffer, packet::Packet, resolver};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("dns_parsing", |b| {
@@ -20,6 +20,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let _ = black_box(Packet::try_from(&mut pb));
         });
+    });
+
+    c.bench_function("dns_lookup", |b| {
+        b.iter(|| {
+            let _ = black_box(resolver::lookup_a::<resolver::Local>("google.com"));
+        })
     });
 }
 

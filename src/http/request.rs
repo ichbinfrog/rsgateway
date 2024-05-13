@@ -41,8 +41,8 @@ impl TryFrom<Parts> for String {
 
 #[derive(Debug, PartialEq)]
 pub struct Standard {
-    name: String,
-    version: Version,
+    pub name: String,
+    pub version: Version,
 }
 
 impl Default for Standard {
@@ -129,6 +129,7 @@ impl<T> Request<T> {
         T: Write + Read,
     {
         let req = String::try_from(self.parts)?;
+        println!("{:?}", req);
         stream.write(req.as_bytes())?;
 
         let resp = Response::parse(stream)?;

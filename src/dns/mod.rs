@@ -1,4 +1,4 @@
-pub mod dns;
+pub mod buffer;
 pub mod error;
 pub mod packet;
 pub mod question;

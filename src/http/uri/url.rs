@@ -6,9 +6,9 @@ use super::authority::Authority;
 
 #[derive(Debug, PartialEq)]
 pub struct Url {
-    scheme: String,
-    authority: Option<Authority>,
-    path: Option<Path>,
+    pub scheme: String,
+    pub authority: Option<Authority>,
+    pub path: Option<Path>,
 }
 
 impl Default for Url {
