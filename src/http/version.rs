@@ -1,7 +1,7 @@
 use crate::http::error::parse::ParseError;
 use std::{error::Error, str::FromStr};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Version {
     pub major: usize,
     pub minor: Option<usize>,

@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr};
 
-use crate::http::{error::parse::ParseError, uri::path::Path};
+use crate::http::{uri::path::Path};
 
 use super::authority::Authority;
 
@@ -40,7 +40,7 @@ impl TryFrom<Url> for String {
 }
 
 impl FromStr for Url {
-    type Err = ParseError;
+    type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut url = Url::default();

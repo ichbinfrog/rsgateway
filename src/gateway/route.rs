@@ -1,4 +1,3 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
 struct Upstream {
@@ -9,5 +8,6 @@ struct Upstream {
 
 #[derive(Debug)]
 pub struct Node {
-    children: HashMap<String, Vec<Rc<RefCell<Node>>>>,
+    upstreams: Vec<Upstream>,
+    children: Vec<Box<Node>>,
 }

@@ -1,9 +1,11 @@
 #![feature(let_chains)]
-pub mod server;
+
+use rsgateway::gateway::proxy::Proxy;
+
 
 fn main() {
-    let svc = server::Server::new("localhost:9090");
-    svc.run();
+    let proxy = Proxy::new("localhost:9090");
+    proxy.run();
 }
 
 // ["GET / HTTP/1.1",

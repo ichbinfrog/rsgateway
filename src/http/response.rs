@@ -81,7 +81,7 @@ impl<T: TryClone<T> + Read> Response<T> {
         Ok(response)
     }
 
-    pub fn body(&mut self) -> Result<usize, Box<dyn Error>> {
+    pub fn read_body(&mut self) -> Result<usize, Box<dyn Error>> {
         if self.hasbody {
             match self.headers.get("content-length") {
                 Ok(value) => match value {

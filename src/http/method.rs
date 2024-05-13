@@ -1,7 +1,7 @@
 use crate::http::error::parse::ParseError;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Method {
     GET,
     HEAD,

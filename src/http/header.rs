@@ -1,13 +1,18 @@
 use super::{
-    error::parse::ParseError, method::Method, mimetype::MimeType, uri::authority::Authority,
+    error::parse::ParseError,
+    method::Method,
+    mimetype::MimeType,
+    uri::{authority::Authority, url::Url},
     useragent::UserAgent,
 };
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap, convert::Infallible, error::Error, ops::FromResidual, str::FromStr,
+};
 
 pub const MAX_HEADER_SIZE: usize = 8190;
 pub const MAX_HEADER_MAP_SIZE: usize = MAX_HEADER_SIZE * 128 * 2;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct HeaderMap {
     pub raw: HashMap<String, String>,
     pub size: usize,
@@ -75,15 +80,15 @@ impl HeaderMap {
         Ok(())
     }
 
-    pub fn get(&self, k: &str) -> Result<HeaderKind, ParseError> {
+    pub fn get(&self, k: &str) -> Result<HeaderKind, Box<dyn Error>> {
         let lk = k.to_lowercase();
         match self.raw.get(&lk) {
-            Some(v) => HeaderKind::try_from((lk.as_str(), v.as_str())),
-            None => Err(ParseError::HeaderNotFound),
+            Some(v) => Ok(HeaderKind::try_from((lk.as_str(), v.as_str()))?),
+            None => Err(ParseError::HeaderNotFound.into()),
         }
     }
 
-    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), ParseError> {
+    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), Box<dyn Error>> {
         self.raw.insert(k.to_string(), String::try_from(v)?);
         Ok(())
     }
@@ -98,44 +103,55 @@ pub enum HeaderKind {
     ContentLength(usize),
     ContentType(Option<Vec<MimeType>>),
     UserAgent(UserAgent),
+
     Host(Authority),
+    Referer(Url),
+}
+
+fn try_header_string_from_vec<T>(values: Option<Vec<T>>) -> Result<String, ParseError>
+where
+    String: TryFrom<T>,
+    <String as TryFrom<T>>::Error: Into<ParseError>,
+    Result<String, ParseError>: FromResidual<Result<Infallible, <String as TryFrom<T>>::Error>>,
+{
+    let mut res: String = String::new();
+    if let Some(values) = values {
+        let n = values.len();
+        let mut i = 0;
+
+        for value in values {
+            res.push_str(&String::try_from(value)?);
+            if n != 1 && i != n - 1 {
+                res.push(',');
+            }
+            i += 1;
+        }
+    }
+    Ok(res)
+}
+
+fn try_header_vec_from_string<T>(v: &str) -> Vec<T>
+where
+    T: FromStr,
+{
+    v.split(',')
+        .filter_map(|x| T::from_str(x.trim()).ok())
+        .collect()
 }
 
 impl TryFrom<HeaderKind> for String {
-    type Error = ParseError;
+    type Error = Box<dyn Error>;
 
     fn try_from(header: HeaderKind) -> Result<Self, Self::Error> {
-        let mut res = String::new();
+        let mut res: String = String::new();
 
         match header {
             HeaderKind::Age(n) => res = n.to_string(),
             HeaderKind::Allow(allowed) => {
-                if let Some(methods) = allowed {
-                    let n = methods.len();
-                    let mut i = 0;
-
-                    for method in methods {
-                        res.push_str(&String::try_from(method)?);
-                        if n != 1 && i != n - 1 {
-                            res.push(',');
-                        }
-                        i += 1;
-                    }
-                }
+                res = try_header_string_from_vec(allowed)?;
             }
             HeaderKind::Accept(content_types) | HeaderKind::ContentType(content_types) => {
-                if let Some(mimetypes) = content_types {
-                    let n = mimetypes.len();
-                    let mut i = 0;
-
-                    for mimetype in mimetypes {
-                        res.push_str(&String::try_from(mimetype)?);
-                        if n != 1 && i != n - 1 {
-                            res.push(',');
-                        }
-                        i += 1;
-                    }
-                }
+                res = try_header_string_from_vec(content_types)?;
             }
             HeaderKind::ContentLength(n) => {
                 res.push_str(&n.to_string());
@@ -146,6 +162,9 @@ impl TryFrom<HeaderKind> for String {
             HeaderKind::Host(authority) => {
                 res.push_str(&String::try_from(authority)?);
             }
+            HeaderKind::Referer(url) => {
+                res.push_str(&String::try_from(url)?);
+            }
         }
 
         Ok(res)
@@ -153,52 +172,25 @@ impl TryFrom<HeaderKind> for String {
 }
 
 impl TryFrom<(&str, &str)> for HeaderKind {
-    type Error = ParseError;
+    type Error = Box<dyn Error>;
 
     fn try_from((k, v): (&str, &str)) -> Result<Self, Self::Error> {
         match k {
-            "age" => match usize::from_str_radix(v, 10) {
-                Ok(v) => Ok(Self::Age(v)),
-                Err(e) => {
-                    return Err(ParseError::InvalidInteger {
-                        reason: e.to_string(),
-                        subject: "age header",
-                    })
-                }
-            },
+            "age" => Ok(Self::Age(usize::from_str_radix(v, 10)?)),
             "allow" => Ok(Self::Allow {
-                0: Some(
-                    v.split(',')
-                        .filter_map(|x| Method::from_str(x.trim()).ok())
-                        .collect(),
-                ),
+                0: Some(try_header_vec_from_string::<Method>(v)),
             }),
             "accept" => Ok(Self::Accept {
-                0: Some(
-                    v.split(',')
-                        .filter_map(|x| MimeType::from_str(x.trim()).ok())
-                        .collect(),
-                ),
+                0: Some(try_header_vec_from_string::<MimeType>(v)),
             }),
             "content-type" => Ok(Self::ContentType {
-                0: Some(
-                    v.split(',')
-                        .filter_map(|x| MimeType::from_str(x.trim()).ok())
-                        .collect(),
-                ),
+                0: Some(try_header_vec_from_string::<MimeType>(v)),
             }),
-            "content-length" => match usize::from_str_radix(v, 10) {
-                Ok(v) => Ok(Self::ContentLength(v)),
-                Err(e) => {
-                    return Err(ParseError::InvalidInteger {
-                        reason: e.to_string(),
-                        subject: "age header",
-                    })
-                }
-            },
+            "content-length" => Ok(Self::ContentLength(usize::from_str_radix(v, 10)?)),
             "user-agent" => Ok(Self::UserAgent(UserAgent::from_str(v)?)),
             "authority" => Ok(Self::Host(Authority::from_str(v)?)),
-            _ => Err(ParseError::HeaderStructuredGetNotImplemented),
+            "referer" => Ok(Self::Referer(Url::from_str(v)?)),
+            _ => Err(ParseError::HeaderStructuredGetNotImplemented.into()),
         }
     }
 }

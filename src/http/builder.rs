@@ -1,13 +1,7 @@
 use std::str::FromStr;
 
 use super::{
-    header::{HeaderKind, HeaderMap},
-    method::Method,
-    request::Request,
-    uri::{
-        path::Query,
-        url::Url,
-    },
+    header::{HeaderKind, HeaderMap}, method::Method, request::{ Request}, traits::TryClone, uri::{path::Query, url::Url}
 };
 
 #[derive(Debug)]

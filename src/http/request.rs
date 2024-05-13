@@ -1,4 +1,5 @@
 use crate::http::error::parse::ParseError;
+use crate::http::header::HeaderKind;
 use crate::http::method::Method;
 use crate::http::version::Version;
 
@@ -9,12 +10,13 @@ use std::str::FromStr;
 
 use super::header::HeaderMap;
 use super::response::Response;
+use super::traits::TryClone;
 use super::uri::path::Path;
 use super::uri::url::Url;
 
 const MAX_REQUEST_LINE_SIZE: usize = 8096 * 4;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Parts {
     pub method: Method,
     pub url: Url,
@@ -41,7 +43,7 @@ impl TryFrom<Parts> for String {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Standard {
     pub name: String,
     pub version: Version,
@@ -90,11 +92,12 @@ impl FromStr for Standard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Request<T> {
     pub parts: Parts,
-    pub body: Option<String>,
+    pub hasbody: bool,
 
+    pub body: Option<Vec<u8>>,
     pub stream: Option<T>,
 }
 
@@ -115,11 +118,12 @@ impl<T> Default for Request<T> {
             },
             body: None,
             stream: None,
+            hasbody: false,
         }
     }
 }
 
-impl<T> Request<T> {
+impl<T: Read + TryClone<T>> Request<T> {
     pub fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>> {
         let req = String::try_from(self.parts)?;
         stream.write(req.as_bytes())?;
@@ -135,16 +139,40 @@ impl<T> Request<T> {
         Ok(resp)
     }
 
-    pub fn parse(stream: &mut BufReader<T>) -> Result<Self, Box<dyn Error>>
-    where
-        T: Read,
+    pub fn parse(stream: &mut T) -> Result<(Self, BufReader<T>), Box<dyn Error>>
     {
-        let mut request: Request<T> = Default::default();
+        let mut buffer = BufReader::new(stream.clone()?);
+        let mut request = Request::default();
         let mut line = String::with_capacity(MAX_REQUEST_LINE_SIZE);
         let mut state: u8 = 0;
 
         loop {
-            match stream.read_line(&mut line) {
+            // if state == 2 {
+            //     match request.parts.method {
+            //         Method::POST => {
+            //             // Should only be reachable if method == POST
+            //             match request.parts.headers.get("content-length")? {
+            //                 HeaderKind::ContentLength(n) => {
+            //                     println!("reading {:?}", n);
+
+            //                     let mut buf = Vec::<u8>::with_capacity(n);
+            //                     stream.read_exact(&mut buf)?;
+            //                     println!("{:?}", buf);
+            //                 }
+            //                 _ => {
+            //                     println!("holla");
+            //                     break
+            //                 }
+            //             }
+
+            //             // request.body = Some(stream.read_lin);
+            //         }
+            //         _ => {
+            //             break
+            //         }
+            //     }
+            // }
+            match buffer.read_line(&mut line) {
                 Ok(0) => {
                     break;
                 }
@@ -171,13 +199,18 @@ impl<T> Request<T> {
                     }
                     1 => {
                         if line == "\r\n" {
-                            state = 2;
+                            line.clear();
+
+                            if request.parts.method == Method::POST {
+                                request.hasbody = true;
+                            }
+                            break;
                         }
                         let _ = request.parts.headers.parse(&line);
                         line.clear();
                     }
                     _ => {
-                        request.body = Some(line.clone());
+                        break;
                     }
                 },
                 Err(e) => {
@@ -186,7 +219,26 @@ impl<T> Request<T> {
             }
         }
 
-        Ok(request)
+        Ok((request, buffer))
+    }
+
+    pub fn read_body(&mut self, buffer: &mut BufReader<T>) -> Result<usize, Box<dyn Error>> {
+        if self.hasbody {
+            match self.parts.headers.get("content-length") {
+                Ok(value) => match value {
+                    HeaderKind::ContentLength(n) => {
+                        let mut body = Vec::new();
+                        body.resize(n, 0u8);
+                        buffer.read_exact(&mut body)?;
+                        self.body = Some(body);
+                        return Ok(n);
+                    }
+                    _ => return Err(ParseError::MissingContentLengthHeader.into()),
+                },
+                Err(e) => return Err(e.into()),
+            }
+        }
+        Ok(0)
     }
 }
 
@@ -194,11 +246,7 @@ impl<T> Request<T> {
 mod tests {
     use crate::http::uri::authority::Authority;
     use crate::http::uri::path::Path;
-    use std::{
-        collections::HashMap,
-        io::BufReader,
-        net::{TcpStream},
-    };
+    use std::{collections::HashMap, io::Cursor, net::TcpStream};
 
     use super::*;
     use rstest::*;
@@ -238,14 +286,14 @@ mod tests {
             },
             body: None,
             stream: None,
+            hasbody: false,
         }
     )]
-    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<&[u8]>) {
+    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<Cursor<String>>) {
         let input = input.join("\n");
-        let lines = input.as_bytes();
-        let mut buf = BufReader::new(lines);
+        let mut cursor = Cursor::new(input);
 
-        let req = Request::parse(&mut buf).unwrap();
+        let (req, _) = Request::parse(&mut cursor).unwrap();
         assert_eq!(req, expected);
     }
 
@@ -283,6 +331,7 @@ mod tests {
             },
             body: None,
             stream: None,
+            hasbody: false,
         };
 
         let resp = req.call(&mut stream).unwrap();

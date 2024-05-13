@@ -1,12 +1,8 @@
 use std::{error::Error, net::TcpStream};
 
 use super::{
-    builder::Builder,
-    error::parse::ParseError,
-    header::HeaderMap,
-    request::Request,
-    response::Response,
-    uri::authority::Authority,
+    builder::Builder, error::parse::ParseError, header::HeaderMap, request::Request,
+    response::Response, uri::authority::Authority,
 };
 use crate::dns::resolver::{self, Resolver};
 
@@ -20,6 +16,7 @@ impl Client {
         let mut stream: TcpStream;
         let request: Request<TcpStream> = Builder::new().get(url).headers(headers).build();
 
+        println!("{:?}", request);
         match request.parts.url.authority {
             Authority::Domain { ref host, port } => {
                 let hosts = resolver::lookup_a::<R>(host)?;
@@ -42,9 +39,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::http::{
-        header::HeaderKind, mimetype::MimeType, statuscode::StatusCode,
-    };
+    use crate::http::{header::HeaderKind, mimetype::MimeType, statuscode::StatusCode};
 
     use self::resolver::Google;
 
@@ -67,6 +62,6 @@ mod tests {
         let mut resp =
             Client::get::<Google>("http://httpbin.org/robots.txt".to_string(), headers).unwrap();
         assert_eq!(resp.status, StatusCode::Ok);
-        assert!(resp.body().unwrap() > 0);
+        assert!(resp.read_body().unwrap() > 0);
     }
 }
