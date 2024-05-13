@@ -3,10 +3,10 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub struct MimeType {
-    kind: String,
-    sub: String,
+    pub kind: String,
+    pub sub: String,
 
-    param: Option<(String, String)>,
+    pub param: Option<(String, String)>,
 }
 
 impl MimeType {

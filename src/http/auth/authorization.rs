@@ -1,6 +1,4 @@
-use std::str::FromStr;
 
-use crate::{encoding::base64, http::error::parse::ParseError};
 
 #[derive(Debug)]
 pub enum Authorization {

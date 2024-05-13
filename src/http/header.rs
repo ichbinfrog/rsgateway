@@ -1,4 +1,7 @@
-use super::{error::parse::ParseError, method::Method, mimetype::MimeType, useragent::UserAgent};
+use super::{
+    error::parse::ParseError, method::Method, mimetype::MimeType, uri::authority::Authority,
+    useragent::UserAgent,
+};
 use std::{collections::HashMap, str::FromStr};
 
 pub const MAX_HEADER_SIZE: usize = 8190;
@@ -79,6 +82,11 @@ impl HeaderMap {
             None => Err(ParseError::HeaderNotFound),
         }
     }
+
+    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), ParseError> {
+        self.raw.insert(k.to_string(), String::try_from(v)?);
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -90,6 +98,7 @@ pub enum HeaderKind {
     ContentLength(usize),
     ContentType(Option<Vec<MimeType>>),
     UserAgent(UserAgent),
+    Host(Authority),
 }
 
 impl TryFrom<HeaderKind> for String {
@@ -133,6 +142,9 @@ impl TryFrom<HeaderKind> for String {
             }
             HeaderKind::UserAgent(user) => {
                 res.push_str(&String::try_from(user)?);
+            }
+            HeaderKind::Host(authority) => {
+                res.push_str(&String::try_from(authority)?);
             }
         }
 
@@ -185,6 +197,7 @@ impl TryFrom<(&str, &str)> for HeaderKind {
                 }
             },
             "user-agent" => Ok(Self::UserAgent(UserAgent::from_str(v)?)),
+            "authority" => Ok(Self::Host(Authority::from_str(v)?)),
             _ => Err(ParseError::HeaderStructuredGetNotImplemented),
         }
     }

@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 #[inline]
 fn lookup(index: u8) -> char {
     if index <= 25 {

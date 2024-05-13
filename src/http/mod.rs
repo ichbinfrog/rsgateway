@@ -9,5 +9,7 @@ pub mod useragent;
 pub mod version;
 
 pub mod auth;
+pub mod builder;
 pub mod client;
+pub mod traits;
 pub mod uri;

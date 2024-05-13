@@ -3,19 +3,21 @@ use crate::http::method::Method;
 use crate::http::version::Version;
 
 use std::error::Error;
-use std::io::{BufRead, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpStream;
 use std::str::FromStr;
 
 use super::header::HeaderMap;
 use super::response::Response;
 use super::uri::path::Path;
+use super::uri::url::Url;
 
 const MAX_REQUEST_LINE_SIZE: usize = 8096 * 4;
 
 #[derive(Debug, PartialEq)]
 pub struct Parts {
     pub method: Method,
-    pub path: Path,
+    pub url: Url,
     pub standard: Standard,
 
     pub headers: HeaderMap,
@@ -28,7 +30,7 @@ impl TryFrom<Parts> for String {
         let mut res = String::new();
         res.push_str(&String::try_from(p.method)?);
         res.push(' ');
-        res.push_str(&String::try_from(p.path)?);
+        res.push_str(&String::try_from(p.url.path)?);
         res.push(' ');
         res.push_str(&String::try_from(p.standard)?);
         res.push_str("\r\n");
@@ -48,8 +50,12 @@ pub struct Standard {
 impl Default for Standard {
     fn default() -> Self {
         Self {
-            name: "".to_string(),
-            version: Version::default(),
+            name: "HTTP".to_string(),
+            version: Version {
+                major: 1,
+                minor: Some(1),
+                patch: None,
+            },
         }
     }
 }
@@ -104,7 +110,7 @@ impl<T> Default for Request<T> {
             parts: Parts {
                 method: Method::UNDEFINED,
                 standard: Standard::default(),
-                path: Path::default(),
+                url: Url::default(),
                 headers: HeaderMap::default(),
             },
             body: None,
@@ -114,31 +120,24 @@ impl<T> Default for Request<T> {
 }
 
 impl<T> Request<T> {
-    pub fn write(self, stream: &mut T) -> Result<(), Box<dyn Error>>
-    where
-        T: Write,
-    {
+    pub fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>> {
         let req = String::try_from(self.parts)?;
         stream.write(req.as_bytes())?;
 
         Ok(())
     }
 
-    pub fn call(self, stream: &mut T) -> Result<Response<T>, Box<dyn Error>>
-    where
-        T: Write + Read,
-    {
+    pub fn call(self, stream: &mut TcpStream) -> Result<Response<TcpStream>, Box<dyn Error>> {
         let req = String::try_from(self.parts)?;
-        println!("{:?}", req);
         stream.write(req.as_bytes())?;
 
         let resp = Response::parse(stream)?;
         Ok(resp)
     }
 
-    pub fn parse(stream: &mut T) -> Result<Self, Box<dyn Error>>
+    pub fn parse(stream: &mut BufReader<T>) -> Result<Self, Box<dyn Error>>
     where
-        T: BufRead,
+        T: Read,
     {
         let mut request: Request<T> = Default::default();
         let mut line = String::with_capacity(MAX_REQUEST_LINE_SIZE);
@@ -157,7 +156,7 @@ impl<T> Request<T> {
                             if ch.is_whitespace() {
                                 match j {
                                     0 => request.parts.method = Method::from_str(&acc)?,
-                                    1 => request.parts.path = Path::from_str(&acc)?,
+                                    1 => request.parts.url.path = Path::from_str(&acc)?,
                                     2 => request.parts.standard = Standard::from_str(&acc)?,
                                     _ => {}
                                 }
@@ -193,8 +192,13 @@ impl<T> Request<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::http::uri::authority::Authority;
     use crate::http::uri::path::Path;
-    use std::{collections::HashMap, io::BufReader, net::TcpStream};
+    use std::{
+        collections::HashMap,
+        io::BufReader,
+        net::{TcpStream},
+    };
 
     use super::*;
     use rstest::*;
@@ -216,9 +220,13 @@ mod tests {
                         patch: None 
                     },
                 },
-                path: Path {
-                    raw_path: "/".to_string(),
-                    ..Default::default()
+                url: Url {
+                    scheme: "http".to_string(),
+                    authority: Authority::Domain { host: "localhost".to_string(), port: 9090 },
+                    path: Path {
+                        raw_path: "/".to_string(),
+                        ..Default::default()
+                    },
                 },
                 headers: HeaderMap {
                     raw: HashMap::from([
@@ -232,7 +240,7 @@ mod tests {
             stream: None,
         }
     )]
-    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<BufReader<&[u8]>>) {
+    fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<&[u8]>) {
         let input = input.join("\n");
         let lines = input.as_bytes();
         let mut buf = BufReader::new(lines);
@@ -256,9 +264,16 @@ mod tests {
                         patch: None,
                     },
                 },
-                path: Path {
-                    raw_path: "/".to_string(),
-                    ..Default::default()
+                url: Url {
+                    scheme: "http".to_string(),
+                    authority: Authority::Domain {
+                        host: "localhost".to_string(),
+                        port: 9090,
+                    },
+                    path: Path {
+                        raw_path: "/".to_string(),
+                        ..Default::default()
+                    },
                 },
                 headers: HeaderMap {
                     raw: HashMap::from([("host".to_string(), "127.0.0.1".to_string())]),

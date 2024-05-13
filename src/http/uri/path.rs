@@ -1,14 +1,14 @@
 use crate::encoding::percent::{self, escape};
 use std::{collections::HashMap, error::Error, str::FromStr};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Query {
     raw: String,
     lookup: HashMap<String, Vec<String>>,
     count: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Path {
     pub raw_path: String,
     pub raw_fragment: Option<String>,

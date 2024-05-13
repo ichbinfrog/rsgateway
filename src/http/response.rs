@@ -9,6 +9,7 @@ use super::{
     header::{HeaderKind, HeaderMap},
     request::Standard,
     statuscode::StatusCode,
+    traits::TryClone,
 };
 const MAX_RESPONSE_LINE_SIZE: usize = 8096 * 4;
 
@@ -19,31 +20,26 @@ pub struct Response<T> {
     pub headers: HeaderMap,
 
     pub hasbody: bool,
+    pub buffer: BufReader<T>,
     pub body: Option<Vec<u8>>,
-    pub stream: Option<T>,
 }
 
-impl<T> Response<T> {
-    pub fn parse(stream: &mut T) -> Result<Self, Box<dyn Error>>
-    where
-        T: Read,
-    {
-        let mut buf = BufReader::new(stream);
+impl<T: TryClone<T> + Read> Response<T> {
+    pub fn parse(stream: &mut T) -> Result<Self, Box<dyn Error>> {
         let mut response: Response<T> = Response {
             status: StatusCode::Accepted,
             standard: Standard::default(),
             headers: HeaderMap::default(),
             hasbody: false,
             body: None,
-            stream: None,
+            buffer: BufReader::new(stream.clone()?),
         };
 
-        let mut has_body = false;
         let mut line = String::with_capacity(MAX_RESPONSE_LINE_SIZE);
         let mut state: u8 = 0;
 
         loop {
-            match buf.read_line(&mut line) {
+            match response.buffer.read_line(&mut line) {
                 Ok(0) => {
                     break;
                 }
@@ -85,19 +81,14 @@ impl<T> Response<T> {
         Ok(response)
     }
 
-    pub fn read_body(&mut self, stream: &mut T) -> Result<usize, Box<dyn Error>>
-    where
-        T: Read,
-    {
-        let mut buf = BufReader::new(stream);
-
+    pub fn body(&mut self) -> Result<usize, Box<dyn Error>> {
         if self.hasbody {
             match self.headers.get("content-length") {
                 Ok(value) => match value {
                     HeaderKind::ContentLength(n) => {
                         let mut body = Vec::new();
                         body.resize(n, 0u8);
-                        buf.read_exact(&mut body)?;
+                        self.buffer.read_exact(&mut body)?;
                         self.body = Some(body);
                         return Ok(n);
                     }

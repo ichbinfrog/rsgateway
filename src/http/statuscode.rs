@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum StatusCode {
     Continue = 100,
     SwitchingProtocol = 101,

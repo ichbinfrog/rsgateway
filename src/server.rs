@@ -15,7 +15,7 @@ impl Server {
 
     pub fn run(&self) {
         loop {
-            let (mut stream, _) = self.listener.accept().unwrap();
+            let (stream, _) = self.listener.accept().unwrap();
             // tokio::spawn(async move {
             // let mut buf = String::with_capacity(4096);
 
