@@ -3,10 +3,30 @@ use std::{
     net::{Ipv4Addr, Ipv6Addr, UdpSocket},
 };
 
+use rand::Rng;
+
 use super::{
-    packet::{Header, PacketBuffer, PacketError},
-    question::{Question, QuestionKind},
+    error::DNSError,
+    packet::{Header, PacketBuffer, PacketError, ResponseCode},
+    question::{Question, QuestionClass, QuestionKind},
 };
+
+// https://www.internic.net/domain/named.root
+const NAMED_ROOT: [Ipv4Addr; 13] = [
+    Ipv4Addr::new(198, 41, 0, 4),
+    Ipv4Addr::new(170, 247, 170, 2),
+    Ipv4Addr::new(192, 33, 4, 12),
+    Ipv4Addr::new(199, 7, 91, 13),
+    Ipv4Addr::new(192, 203, 230, 10),
+    Ipv4Addr::new(192, 5, 5, 241),
+    Ipv4Addr::new(192, 112, 36, 4),
+    Ipv4Addr::new(198, 97, 190, 53),
+    Ipv4Addr::new(192, 36, 148, 17),
+    Ipv4Addr::new(192, 58, 128, 30),
+    Ipv4Addr::new(193, 0, 14, 129),
+    Ipv4Addr::new(199, 7, 83, 42),
+    Ipv4Addr::new(202, 12, 27, 33),
+];
 
 #[derive(Debug, PartialEq)]
 pub enum Record {
@@ -327,10 +347,10 @@ impl Packet {
         Ok(())
     }
 
-    pub fn lookup(&self, socket: UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
+    pub fn lookup(&self, socket: &mut UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
         let mut req: PacketBuffer = PacketBuffer::default();
         self.write(&mut req)?;
-        socket.send_to(&req.buf[0..req.pos], server)?;
+        socket.send_to(&req.buf[0..req.pos], (server, 53))?;
 
         let mut res = PacketBuffer::default();
         socket.recv_from(&mut res.buf)?;
@@ -338,11 +358,105 @@ impl Packet {
         let packet = Packet::try_from(&mut res)?;
         Ok(packet)
     }
+
+    fn get_authority<'a>(&'a self, qname: &'a str) -> impl Iterator<Item = (&'a str, &'a str)> {
+        self.authorities
+            .iter()
+            .flatten()
+            .filter_map(|record| match record {
+                Record::NS { question, host, .. } if qname.ends_with(&question.name) => {
+                    Some((question.name.as_str(), host.as_str()))
+                }
+                _ => None,
+            })
+    }
+
+    fn get_resolved_authority(&self, qname: &str) -> Option<Ipv4Addr> {
+        self.get_authority(qname)
+            .flat_map(|(_, host)| {
+                self.resources
+                    .iter()
+                    .flatten()
+                    .filter_map(move |record| match record {
+                        Record::A { question, addr, .. } if question.name == host => Some(*addr),
+                        _ => None,
+                    })
+            })
+            .next()
+    }
+
+    pub fn get_unresolved_authority<'a>(&'a self, qname: &'a str) -> Option<&'a str> {
+        self.get_authority(qname).map(|(_, host)| host).next()
+    }
+
+    pub fn get_random_a(&self) -> Option<Ipv4Addr> {
+        self.answers
+            .iter()
+            .flatten()
+            .filter_map(|record| match record {
+                Record::A { addr, .. } => Some(*addr),
+                _ => None,
+            })
+            .next()
+    }
+}
+
+pub fn recursive_lookup(
+    qname: &str,
+    depth: usize,
+    max_depth: usize,
+) -> Result<Packet, Box<dyn Error>> {
+    if depth > max_depth {
+        return Err(DNSError::MaxRecursionDepth(max_depth).into());
+    }
+
+    let packet = Packet {
+        header: Header {
+            id: 30000,
+            query_count: 1,
+            recursion_desired: true,
+            ..Default::default()
+        },
+        questions: Some(vec![Question {
+            name: qname.to_string(),
+            kind: QuestionKind::A,
+            class: QuestionClass::IN,
+        }]),
+        answers: None,
+        authorities: None,
+        resources: None,
+    };
+
+    let mut server = NAMED_ROOT[rand::thread_rng().gen_range(0..12)].to_string();
+    let mut socket = UdpSocket::bind(("0.0.0.0", 0))?;
+
+    loop {
+        let res = packet.lookup(&mut socket, &server)?;
+        if res.answers.is_some() && res.header.response_code == ResponseCode::NoError {
+            return Ok(res);
+        }
+
+        if let Some(hop) = res.get_resolved_authority(qname) {
+            server = hop.to_string();
+            continue;
+        }
+
+        let next = match res.get_unresolved_authority(qname) {
+            Some(x) => x,
+            None => return Ok(res),
+        };
+
+        let recursive_response = recursive_lookup(&next, depth + 1, max_depth)?;
+        match recursive_response.get_random_a() {
+            Some(next_domain) => server = next_domain.to_string(),
+            _ => return Ok(res),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Packet, Record};
+    use super::{recursive_lookup, Packet, Record};
     use crate::dns::{
         packet::{Header, PacketBuffer, ResponseCode},
         question::{Question, QuestionClass, QuestionKind},
@@ -821,10 +935,16 @@ mod tests {
             authorities: None,
             resources: None,
         };
-        let server = "8.8.8.8:53";
-        let socket = UdpSocket::bind(("0.0.0.0", 43210)).unwrap();
+        let server = "8.8.8.8";
+        let mut socket = UdpSocket::bind("0.0.0.0:0").unwrap();
 
-        let res = packet.lookup(socket, server).unwrap();
-        println!("{:?}", res);
+        let res = packet.lookup(&mut socket, server).unwrap();
+        assert!(res.header.answer_count > 0);
+    }
+
+    #[test]
+    fn test_recursive_lookup() {
+        let res = recursive_lookup("google.com", 0, 10).unwrap();
+        assert!(res.header.answer_count > 0);
     }
 }

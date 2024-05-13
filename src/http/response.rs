@@ -17,6 +17,8 @@ pub struct Response<T> {
     pub standard: Standard,
     pub status: StatusCode,
     pub headers: HeaderMap,
+
+    pub hasbody: bool,
     pub body: Option<Vec<u8>>,
     pub stream: Option<T>,
 }
@@ -31,6 +33,7 @@ impl<T> Response<T> {
             status: StatusCode::Accepted,
             standard: Standard::default(),
             headers: HeaderMap::default(),
+            hasbody: false,
             body: None,
             stream: None,
         };
@@ -66,7 +69,7 @@ impl<T> Response<T> {
                     }
                     _ => {
                         if line == "\r\n" {
-                            has_body = true;
+                            response.hasbody = true;
                             break;
                         }
                         let _ = response.headers.parse(&line);
@@ -79,21 +82,30 @@ impl<T> Response<T> {
             }
         }
 
-        if has_body {
-            match response.headers.get("content-length") {
+        Ok(response)
+    }
+
+    pub fn read_body(&mut self, stream: &mut T) -> Result<usize, Box<dyn Error>>
+    where
+        T: Read,
+    {
+        let mut buf = BufReader::new(stream);
+
+        if self.hasbody {
+            match self.headers.get("content-length") {
                 Ok(value) => match value {
                     HeaderKind::ContentLength(n) => {
                         let mut body = Vec::new();
                         body.resize(n, 0u8);
                         buf.read_exact(&mut body)?;
-                        response.body = Some(body);
+                        self.body = Some(body);
+                        return Ok(n);
                     }
                     _ => return Err(ParseError::MissingContentLengthHeader.into()),
                 },
                 Err(e) => return Err(e.into()),
             }
         }
-
-        Ok((response))
+        Ok(0)
     }
 }
