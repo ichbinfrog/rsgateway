@@ -6,9 +6,9 @@ use std::{
 use tokio::net::UdpSocket;
 
 use super::{
-    buffer::{Header, PacketBuffer, ResponseCode},
-    error::{LookupError, PacketError},
-    question::{Question, QuestionClass, QuestionKind},
+    buffer::{Header, PacketBuffer},
+    error::{PacketError},
+    question::{Question, QuestionKind},
 };
 
 // https://www.internic.net/domain/named.root

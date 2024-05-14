@@ -19,8 +19,8 @@ impl Builder {
         }
     }
 
-    fn update_url(&mut self, url: String) {
-        let url = Url::from_str(&url).unwrap();
+    fn update_url(&mut self, url: &str) {
+        let url = Url::from_str(url).unwrap();
         self.request.parts.url = url.clone();
         let _ = self
             .request
@@ -29,14 +29,12 @@ impl Builder {
             .put("host", HeaderKind::Host(url.authority));
     }
 
-    pub fn get(mut self, url: String) -> Self {
-        self.request.parts.method = Method::GET;
-        self.update_url(url);
+    pub fn method(mut self, method: Method) -> Self {
+        self.request.parts.method = method;
         self
     }
 
-    pub fn head(mut self, url: String) -> Self {
-        self.request.parts.method = Method::HEAD;
+    pub fn url(mut self, url: &str) -> Self {
         self.update_url(url);
         self
     }
@@ -54,6 +52,11 @@ impl Builder {
                 .raw
                 .insert(k.to_string(), v.to_string());
         }
+        self
+    }
+
+    pub fn body(mut self, buf: Option<Vec<u8>>) -> Self {
+        self.request.body = buf;
         self
     }
 

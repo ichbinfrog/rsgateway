@@ -3,23 +3,19 @@ use std::error::Error;
 use tokio::net::TcpStream;
 
 use super::{
-    builder::Builder, error::parse::ParseError, header::HeaderMap, request::Request,
-    response::Response, uri::authority::Authority,
+    error::parse::ParseError,
+    request::Request, response::Response, uri::authority::Authority,
 };
 use crate::dns::resolver::{self, Resolver};
 
 pub struct Client {}
 
 impl Client {
-    pub async fn get<R>(
-        url: String,
-        headers: HeaderMap,
-    ) -> Result<Response, Box<dyn Error + Send + Sync>>
+    pub async fn perform<R>(request: Request) -> Result<Response, Box<dyn Error + Send + Sync>>
     where
         R: Resolver,
     {
         let mut stream: TcpStream;
-        let request: Request = Builder::new().get(url).headers(headers).build();
 
         match request.parts.url.authority {
             Authority::Domain { ref host, port } => {
@@ -44,7 +40,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::http::{header::HeaderKind, mimetype::MimeType, statuscode::StatusCode};
+    use crate::http::{builder::Builder, header::{HeaderKind, HeaderMap}, method::Method, mimetype::MimeType, statuscode::StatusCode};
 
     use self::resolver::Google;
 
@@ -64,10 +60,12 @@ mod tests {
             )
             .unwrap();
 
-        let mut resp = Client::get::<Google>("http://httpbin.org/robots.txt".to_string(), headers)
-            .await
-            .unwrap();
+        let request = Builder::new()
+            .method(Method::GET)
+            .url("http://httpbin.org/robots.txt")
+            .headers(headers)
+            .build();
+        let resp = Client::perform::<Google>(request).await.unwrap();
         assert_eq!(resp.status, StatusCode::Ok);
-        // assert!(resp.read_body().await.unwrap() > 0);
     }
 }

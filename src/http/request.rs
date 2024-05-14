@@ -4,8 +4,9 @@ use crate::http::method::Method;
 use crate::http::version::Version;
 
 use std::error::Error;
+use std::fmt::Debug;
 use std::str::FromStr;
-use tokio::io::{self, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 
 use super::header::HeaderMap;
@@ -91,12 +92,19 @@ impl FromStr for Standard {
     }
 }
 
-#[derive(Debug)]
 pub struct Request {
     pub parts: Parts,
     pub hasbody: bool,
 
     pub body: Option<Vec<u8>>,
+}
+
+impl Debug for Request {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("request")
+            .field("parts", &self.parts)
+            .finish()
+    }
 }
 
 impl PartialEq for Request {
@@ -121,19 +129,15 @@ impl Default for Request {
 }
 
 impl Request {
-    pub async fn write_body<T: AsyncRead + Unpin>(
-        self,
-        stream: &mut TcpStream,
-        body: &mut T,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        stream.write(b"\r\n").await?;
-        io::copy(body, stream).await?;
-        Ok(())
-    }
-
     pub async fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
         let req = String::try_from(self.parts)?;
         stream.write(req.as_bytes()).await?;
+
+        if let Some(body) = self.body {
+            stream.write(b"\r\n").await?;
+            stream.write(&body).await?;
+        }
+
         Ok(())
     }
 
@@ -225,25 +229,6 @@ impl Request {
 
         Ok(request)
     }
-
-    // pub async fn read_body(&mut self, buffer: &mut TcpStream) -> Result<usize, Box<dyn Error + Send + Sync>> {
-    //     if self.hasbody {
-    //         match self.parts.headers.get("content-length") {
-    //             Ok(value) => match value {
-    //                 HeaderKind::ContentLength(n) => {
-    //                     let mut body = Vec::new();
-    //                     body.resize(n, 0u8);
-    //                     buffer.read_exact(&mut body).await?;
-    //                     self.body = Some(body);
-    //                     return Ok(n);
-    //                 }
-    //                 _ => return Err(ParseError::MissingContentLengthHeader.into()),
-    //             },
-    //             Err(e) => return Err(e.into()),
-    //         }
-    //     }
-    //     Ok(0)
-    // }
 }
 
 #[cfg(test)]
@@ -252,60 +237,64 @@ mod tests {
     use crate::http::uri::path::Path;
     use pretty_assertions::assert_eq;
     use std::{collections::HashMap, io::Cursor};
-    use tokio::net::TcpStream;
+    use tokio::net::{TcpListener, TcpStream};
 
     use super::*;
     use rstest::*;
 
-    // #[rstest]
-    // #[case(
-    //     vec![
-    //         "GET / HTTP/1.1",
-    //         "Host: localhost:9090",
-    //     ],
-    //     Request {
-    //         parts: Parts {
-    //             method: Method::GET,
-    //             standard: Standard {
-    //                 name: "HTTP".to_string(),
-    //                 version: Version {
-    //                     major: 1,
-    //                     minor: Some(1),
-    //                     patch: None
-    //                 },
-    //             },
-    //             url: Url {
-    //                 scheme: "".to_string(),
-    //                 authority: Authority::Domain { host: "localhost".to_string(), port: 9090 },
-    //                 path: Path {
-    //                     raw_path: "/".to_string(),
-    //                     ..Default::default()
-    //                 },
-    //             },
-    //             headers: HeaderMap {
-    //                 raw: HashMap::from([
-    //                     ("host".to_string(), "localhost:9090".to_string()),
-    //                 ]),
-    //                 size: 18,
-    //                 ..Default::default()
-    //             },
-    //         },
-    //         body: None,
-    //         stream: None,
-    //         hasbody: false,
-    //     }
-    // )]
-    // #[tokio::test]
-    // async fn test_parse_request(
-    //     #[case] input: Vec<&str>,
-    //     #[case] expected: Request<'_>,
-    // ) {
-    //     let input = input.join("\r\n");
-    //     let mut cursor = Cursor::new(input);
+    #[rstest]
+    #[case(
+        vec![
+            "GET / HTTP/1.1",
+            "Host: localhost:9090",
+        ],
+        Request {
+            parts: Parts {
+                method: Method::GET,
+                standard: Standard {
+                    name: "HTTP".to_string(),
+                    version: Version {
+                        major: 1,
+                        minor: Some(1),
+                        patch: None
+                    },
+                },
+                url: Url {
+                    scheme: "".to_string(),
+                    authority: Authority::Domain { host: "localhost".to_string(), port: 9090 },
+                    path: Path {
+                        raw_path: "/".to_string(),
+                        ..Default::default()
+                    },
+                },
+                headers: HeaderMap {
+                    raw: HashMap::from([
+                        ("host".to_string(), "localhost:9090".to_string()),
+                    ]),
+                    size: 18,
+                    ..Default::default()
+                },
+            },
+            body: None,
+            hasbody: false,
+        }
+    )]
+    #[tokio::test]
+    async fn test_parse_request(
+        #[case] input: Vec<&str>,
+        #[case] expected: Request,
+    ) {
 
-    //     let (req, _) = Request::parse(&mut cursor).await.unwrap();
-    //     assert_eq!(req, expected);
-    // }
+        let listener = TcpListener::bind(("0.0.0.0", 0)).await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut stream = TcpStream::connect(addr).await.unwrap();
+
+        let input = input.join("\r\n");
+        stream.write(input.as_bytes()).await.unwrap();
+        
+        let req = Request::parse(&mut stream).await.unwrap();
+        assert_eq!(req, expected);
+    }
 
     #[tokio::test]
     async fn test_request_call() {
@@ -344,6 +333,5 @@ mod tests {
         };
 
         let resp = req.call(&mut stream).await.unwrap();
-        println!("{:?}", resp);
     }
 }

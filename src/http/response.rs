@@ -1,4 +1,4 @@
-use std::{error::Error, str::FromStr};
+use std::{error::Error, fmt::Debug, str::FromStr};
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
@@ -13,7 +13,6 @@ use super::{
 };
 const MAX_RESPONSE_LINE_SIZE: usize = 8096 * 4;
 
-#[derive(Debug)]
 pub struct Response {
     pub standard: Standard,
     pub status: StatusCode,
@@ -21,6 +20,16 @@ pub struct Response {
 
     pub hasbody: bool,
     pub body: Option<Vec<u8>>,
+}
+
+impl Debug for Response {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("response")
+            .field("standard", &self.standard)
+            .field("status", &self.status)
+            .field("headers", &self.headers)
+            .finish()
+    }
 }
 
 impl Response {
