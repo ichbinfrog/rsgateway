@@ -49,7 +49,7 @@ impl PacketBuffer {
         Ok(())
     }
 
-    pub fn write<T>(&mut self, val: T) -> Result<(), PacketError>
+    pub async fn write<T>(&mut self, val: T) -> Result<(), PacketError>
     where
         T: 'static
             + Copy
@@ -78,7 +78,7 @@ impl PacketBuffer {
         Ok(())
     }
 
-    pub fn write_qname(&mut self, qname: &str) -> Result<(), PacketError> {
+    pub async fn write_qname(&mut self, qname: &str) -> Result<(), PacketError> {
         for label in qname.split('.') {
             let len = label.len();
             if len > MAX_LABEL_SIZE {
@@ -87,12 +87,12 @@ impl PacketBuffer {
                 });
             }
 
-            self.write::<u8>(len as u8)?;
+            self.write::<u8>(len as u8).await?;
             self.buf[self.pos..self.pos + len].copy_from_slice(label.as_bytes());
             self.pos += len;
         }
 
-        self.write(0_u8)?;
+        self.write(0_u8).await?;
         Ok(())
     }
 
@@ -273,8 +273,8 @@ impl Default for Header {
 }
 
 impl Header {
-    pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
-        buffer.write(self.id)?;
+    pub async fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
+        buffer.write(self.id).await?;
 
         /*
          15 14 13 12 11 10  9  8  7  6  5 4   3  2  1  0
@@ -283,25 +283,29 @@ impl Header {
         |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         */
-        buffer.write::<u8>(
-            ((self.query as u8) << 7) as u8
-                | (self.opcode << 3) as u8
-                | ((self.authoritative_answer as u8) << 2) as u8
-                | ((self.truncated_message as u8) << 1) as u8
-                | self.recursion_desired as u8,
-        )?;
-        buffer.write::<u8>(
-            ((self.recursion_available as u8) << 7) as u8
-                | ((self.zero as u8) << 6) as u8
-                | ((self.authed_data as u8) << 5) as u8
-                | ((self.checking_disabled as u8) << 4) as u8
-                | (self.response_code as u8) as u8,
-        )?;
+        buffer
+            .write::<u8>(
+                ((self.query as u8) << 7) as u8
+                    | (self.opcode << 3) as u8
+                    | ((self.authoritative_answer as u8) << 2) as u8
+                    | ((self.truncated_message as u8) << 1) as u8
+                    | self.recursion_desired as u8,
+            )
+            .await?;
+        buffer
+            .write::<u8>(
+                ((self.recursion_available as u8) << 7) as u8
+                    | ((self.zero as u8) << 6) as u8
+                    | ((self.authed_data as u8) << 5) as u8
+                    | ((self.checking_disabled as u8) << 4) as u8
+                    | (self.response_code as u8) as u8,
+            )
+            .await?;
 
-        buffer.write(self.query_count)?;
-        buffer.write(self.answer_count)?;
-        buffer.write(self.authority_count)?;
-        buffer.write(self.additional_record_count)?;
+        buffer.write(self.query_count).await?;
+        buffer.write(self.answer_count).await?;
+        buffer.write(self.authority_count).await?;
+        buffer.write(self.additional_record_count).await?;
 
         Ok(())
     }
@@ -340,7 +344,8 @@ impl TryFrom<&mut PacketBuffer> for Header {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, io::Write, net::UdpSocket};
+    use std::io::Write;
+    use tokio::net::UdpSocket;
 
     use crate::dns::{
         packet::Packet,
@@ -405,9 +410,10 @@ mod tests {
             additional_record_count: u16::MAX, 
         }
     )]
-    fn test_header_write(#[case] input: Header) {
+    #[tokio::test]
+    async fn test_header_write(#[case] input: Header) {
         let mut pb = PacketBuffer::default();
-        assert!(input.write(&mut pb).is_ok());
+        assert!(input.write(&mut pb).await.is_ok());
         pb.pos = 0;
         assert!(Header::try_from(&mut pb).is_ok_and(|x| x == input));
     }
@@ -441,18 +447,19 @@ mod tests {
     #[rstest]
     #[case("test.google.com")]
     #[case("www")]
-    fn test_qname_write(#[case] input: &str) {
+    #[tokio::test]
+    async fn test_qname_write(#[case] input: &str) {
         let mut pb = PacketBuffer::default();
-        assert!(pb.write_qname(input).is_ok());
+        assert!(pb.write_qname(input).await.is_ok());
         pb.pos = 0;
         let res = pb.read_qname().unwrap();
         assert_eq!(res, input);
     }
 
-    #[test]
-    fn test_wire() {
+    #[tokio::test]
+    async fn test_wire() {
         let server = ("8.8.8.8", 53);
-        let socket = UdpSocket::bind(("0.0.0.0", 43210)).unwrap();
+        let socket = UdpSocket::bind(("0.0.0.0", 43210)).await.unwrap();
 
         let packet = Packet {
             header: Header {
@@ -471,14 +478,14 @@ mod tests {
             resources: None,
         };
         let mut req: PacketBuffer = PacketBuffer::default();
-        packet.write(&mut req).unwrap();
+        packet.write(&mut req).await.unwrap();
 
         let mut file = tempfile().unwrap();
         file.write_all(&req.buf[0..req.pos]).unwrap();
 
-        socket.send_to(&req.buf[0..req.pos], server).unwrap();
+        socket.send_to(&req.buf[0..req.pos], server).await.unwrap();
         let mut res = PacketBuffer::default();
-        socket.recv_from(&mut res.buf).unwrap();
+        socket.recv_from(&mut res.buf).await.unwrap();
 
         println!("{:?}", Packet::try_from(&mut res));
     }

@@ -20,7 +20,7 @@ pub fn escape(s: &str) -> String {
     res
 }
 
-pub fn unescape(s: &str) -> Result<String, Box<dyn Error>> {
+pub fn unescape(s: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     let mut res = String::with_capacity(s.len());
     let mut iter = s.chars().enumerate();
     while let Some((i, ch)) = iter.next() {

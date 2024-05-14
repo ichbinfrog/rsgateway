@@ -1,8 +1,9 @@
 use std::{
-    net::TcpListener,
     sync::{mpsc, Arc, Mutex},
     thread::{spawn, JoinHandle},
 };
+
+use tokio::net::TcpListener;
 
 use crate::{
     dns::resolver::Google,
@@ -63,28 +64,25 @@ pub struct Proxy {
 }
 
 impl Proxy {
-    pub fn new(addr: &str) -> Self {
+    pub async fn new(addr: &str) -> Self {
         Self {
-            listener: TcpListener::bind(addr).unwrap(),
+            listener: TcpListener::bind(addr).await.unwrap(),
         }
     }
 
-    pub fn run(&self) {
-        let pool = ThreadPool::new(2);
+    pub async fn run(&self) {
+        loop {
+            let (mut stream, _) = self.listener.accept().await.unwrap();
+            tokio::spawn(async move {
+                let req = Request::parse(&mut stream).await.unwrap();
 
-        for stream in self.listener.incoming() {
-            let mut stream = stream.unwrap();
-
-            pool.execute(move || {
-                let (req, _) = Request::parse(&mut stream).unwrap();
                 let mut url = "http://httpbin.org".to_string();
                 url.push_str(&String::try_from(req.parts.url.path).unwrap());
-
                 let mut headers = req.parts.headers.clone();
                 headers
                     .raw
                     .insert("host".to_string(), "httpbin.org".to_string());
-                let resp = Client::get::<Google>(url, headers).unwrap();
+                let resp = Client::get::<Google>(url, headers).await.unwrap();
                 println!("{:?}", resp);
             });
         }

@@ -74,7 +74,7 @@ pub enum StatusCode {
 }
 
 impl FromStr for StatusCode {
-    type Err = Box<dyn Error>;
+    type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let u = usize::from_str_radix(s, 10)?;

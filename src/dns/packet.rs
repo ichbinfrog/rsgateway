@@ -1,7 +1,9 @@
 use std::{
     error::Error,
-    net::{Ipv4Addr, Ipv6Addr, UdpSocket},
+    net::{Ipv4Addr, Ipv6Addr},
 };
+
+use tokio::net::UdpSocket;
 
 use super::{
     buffer::{Header, PacketBuffer, ResponseCode},
@@ -162,7 +164,7 @@ impl TryFrom<&mut PacketBuffer> for Record {
 }
 
 impl Record {
-    pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
+    pub async fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
         match self {
             Record::A {
                 question,
@@ -170,10 +172,10 @@ impl Record {
                 ttl,
                 rd_length,
             } => {
-                question.write(buffer)?;
-                buffer.write(*ttl)?;
-                buffer.write(*rd_length)?;
-                buffer.write(u32::from(*addr))?;
+                question.write(buffer).await?;
+                buffer.write(*ttl).await?;
+                buffer.write(*rd_length).await?;
+                buffer.write(u32::from(*addr)).await?;
             }
             Record::AAAA {
                 question,
@@ -181,10 +183,10 @@ impl Record {
                 ttl,
                 rd_length,
             } => {
-                question.write(buffer)?;
-                buffer.write(*ttl)?;
-                buffer.write(*rd_length)?;
-                buffer.write(u128::from(*addr))?;
+                question.write(buffer).await?;
+                buffer.write(*ttl).await?;
+                buffer.write(*rd_length).await?;
+                buffer.write(u128::from(*addr)).await?;
             }
             Record::CNAME {
                 question,
@@ -204,13 +206,13 @@ impl Record {
                 ttl,
                 rd_length,
             } => {
-                question.write(buffer)?;
-                buffer.write(*ttl)?;
+                question.write(buffer).await?;
+                buffer.write(*ttl).await?;
 
                 let prelength = buffer.pos;
-                buffer.write(*rd_length)?;
+                buffer.write(*rd_length).await?;
 
-                buffer.write_qname(host)?;
+                buffer.write_qname(host).await?;
                 buffer.set(prelength, (buffer.pos - prelength + 2) as u16)?;
             }
             Record::MX {
@@ -220,13 +222,13 @@ impl Record {
                 ttl,
                 rd_length,
             } => {
-                question.write(buffer)?;
-                buffer.write(*ttl)?;
+                question.write(buffer).await?;
+                buffer.write(*ttl).await?;
 
                 let prelength = buffer.pos;
-                buffer.write(*rd_length)?;
-                buffer.write(*preference)?;
-                buffer.write_qname(&exchange)?;
+                buffer.write(*rd_length).await?;
+                buffer.write(*preference).await?;
+                buffer.write_qname(&exchange).await?;
                 buffer.set(prelength, (buffer.pos - prelength + 2) as u16)?;
             }
             Record::SOA {
@@ -241,18 +243,18 @@ impl Record {
                 ttl,
                 rd_length,
             } => {
-                question.write(buffer)?;
-                buffer.write(*ttl)?;
+                question.write(buffer).await?;
+                buffer.write(*ttl).await?;
                 let prelength = buffer.pos;
-                buffer.write(*rd_length)?;
+                buffer.write(*rd_length).await?;
 
-                buffer.write_qname(&mname)?;
-                buffer.write_qname(&rname)?;
-                buffer.write(*serial)?;
-                buffer.write(*refresh)?;
-                buffer.write(*retry)?;
-                buffer.write(*expire)?;
-                buffer.write(*minimum)?;
+                buffer.write_qname(&mname).await?;
+                buffer.write_qname(&rname).await?;
+                buffer.write(*serial).await?;
+                buffer.write(*refresh).await?;
+                buffer.write(*retry).await?;
+                buffer.write(*expire).await?;
+                buffer.write(*minimum).await?;
                 buffer.set(prelength, (buffer.pos - prelength + 2) as u16)?;
             }
             Record::UNKNOWN { .. } => {}
@@ -319,39 +321,43 @@ impl TryFrom<&mut PacketBuffer> for Packet {
 }
 
 impl Packet {
-    pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
-        self.header.write(buffer)?;
+    pub async fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
+        self.header.write(buffer).await?;
         if let Some(questions) = &self.questions {
             for question in questions.iter() {
-                question.write(buffer)?;
+                question.write(buffer).await?;
             }
         }
 
         if let Some(answers) = &self.answers {
             for answer in answers.iter() {
-                answer.write(buffer)?;
+                answer.write(buffer).await?;
             }
         }
         if let Some(authorities) = &self.authorities {
             for authority in authorities.iter() {
-                authority.write(buffer)?;
+                authority.write(buffer).await?;
             }
         }
         if let Some(resources) = &self.resources {
             for resource in resources.iter() {
-                resource.write(buffer)?;
+                resource.write(buffer).await?;
             }
         }
         Ok(())
     }
 
-    pub fn lookup(&self, socket: &mut UdpSocket, server: &str) -> Result<Packet, Box<dyn Error>> {
+    pub async fn lookup(
+        &self,
+        socket: &mut UdpSocket,
+        server: &str,
+    ) -> Result<Packet, Box<dyn Error + Send + Sync>> {
         let mut req: PacketBuffer = PacketBuffer::default();
-        self.write(&mut req)?;
-        socket.send_to(&req.buf[0..req.pos], (server, 53))?;
+        self.write(&mut req).await?;
+        socket.send_to(&req.buf[0..req.pos], (server, 53)).await?;
 
         let mut res = PacketBuffer::default();
-        socket.recv_from(&mut res.buf)?;
+        socket.recv_from(&mut res.buf).await?;
 
         let packet = Packet::try_from(&mut res)?;
         Ok(packet)
@@ -399,62 +405,62 @@ impl Packet {
     }
 }
 
-pub fn recursive_lookup(
-    qname: &str,
-    depth: usize,
-    max_depth: usize,
-) -> Result<Packet, Box<dyn Error>> {
-    if depth > max_depth {
-        return Err(LookupError::MaxRecursionDepth(max_depth).into());
-    }
+// pub async fn recursive_lookup(
+//     qname: &str,
+//     depth: usize,
+//     max_depth: usize,
+// ) -> Result<Packet, Box<dyn Error + Send + Sync>> {
+//     if depth > max_depth {
+//         return Err(LookupError::MaxRecursionDepth(max_depth).into());
+//     }
 
-    let packet = Packet {
-        header: Header {
-            id: 30000,
-            query_count: 1,
-            recursion_desired: true,
-            ..Default::default()
-        },
-        questions: Some(vec![Question {
-            name: qname.to_string(),
-            kind: QuestionKind::A,
-            class: QuestionClass::IN,
-        }]),
-        answers: None,
-        authorities: None,
-        resources: None,
-    };
+//     let packet = Packet {
+//         header: Header {
+//             id: 30000,
+//             query_count: 1,
+//             recursion_desired: true,
+//             ..Default::default()
+//         },
+//         questions: Some(vec![Question {
+//             name: qname.to_string(),
+//             kind: QuestionKind::A,
+//             class: QuestionClass::IN,
+//         }]),
+//         answers: None,
+//         authorities: None,
+//         resources: None,
+//     };
 
-    let mut server = NAMED_ROOT[fastrand::usize(..NAMED_ROOT.len())].to_string();
-    let mut socket = UdpSocket::bind(("0.0.0.0", 0))?;
+//     let mut server = NAMED_ROOT[fastrand::usize(..NAMED_ROOT.len())].to_string();
+//     let mut socket = UdpSocket::bind(("0.0.0.0", 0)).await?;
 
-    loop {
-        let res = packet.lookup(&mut socket, &server)?;
-        if res.answers.is_some() && res.header.response_code == ResponseCode::NoError {
-            return Ok(res);
-        }
+//     loop {
+//         let res = packet.lookup(&mut socket, &server).await?;
+//         if res.answers.is_some() && res.header.response_code == ResponseCode::NoError {
+//             return Ok(res);
+//         }
 
-        if let Some(hop) = res.get_resolved_authority(qname) {
-            server = hop.to_string();
-            continue;
-        }
+//         if let Some(hop) = res.get_resolved_authority(qname) {
+//             server = hop.to_string();
+//             continue;
+//         }
 
-        let next = match res.get_unresolved_authority(qname) {
-            Some(x) => x,
-            None => return Ok(res),
-        };
+//         let next = match res.get_unresolved_authority(qname) {
+//             Some(x) => x,
+//             None => return Ok(res),
+//         };
 
-        let recursive_response = recursive_lookup(&next, depth + 1, max_depth)?;
-        match recursive_response.get_random_a() {
-            Some(next_domain) => server = next_domain.to_string(),
-            _ => return Ok(res),
-        }
-    }
-}
+//         let recursive_response = recursive_lookup(&next, depth + 1, max_depth).await?;
+//         match recursive_response.get_random_a() {
+//             Some(next_domain) => server = next_domain.to_string(),
+//             _ => return Ok(res),
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
-    use super::{recursive_lookup, Packet, Record};
+    use super::{Packet, Record};
     use crate::dns::{
         buffer::{Header, PacketBuffer, ResponseCode},
         question::{Question, QuestionClass, QuestionKind},
@@ -462,9 +468,10 @@ mod tests {
     use pretty_assertions::assert_eq;
     use rstest::*;
     use std::{
-        net::{Ipv4Addr, Ipv6Addr, UdpSocket},
+        net::{Ipv4Addr, Ipv6Addr},
         str::FromStr,
     };
+    use tokio::net::UdpSocket;
 
     #[rstest]
     #[case(
@@ -908,15 +915,16 @@ mod tests {
             resources: None 
         }
     )]
-    fn test_packet_writing(#[case] input: Packet) {
+    #[tokio::test]
+    async fn test_packet_writing(#[case] input: Packet) {
         let mut pb = PacketBuffer::default();
-        assert!(input.write(&mut pb).is_ok());
+        assert!(input.write(&mut pb).await.is_ok());
         pb.pos = 0;
         assert_eq!(Packet::try_from(&mut pb).unwrap(), input);
     }
 
-    #[test]
-    fn test_lookup() {
+    #[tokio::test]
+    async fn test_lookup() {
         let packet = Packet {
             header: Header {
                 id: 30000,
@@ -934,15 +942,15 @@ mod tests {
             resources: None,
         };
         let server = "8.8.8.8";
-        let mut socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+        let mut socket = UdpSocket::bind("0.0.0.0:0").await.unwrap();
 
-        let res = packet.lookup(&mut socket, server).unwrap();
+        let res = packet.lookup(&mut socket, server).await.unwrap();
         assert!(res.header.answer_count > 0);
     }
 
-    #[test]
-    fn test_recursive_lookup() {
-        let res = recursive_lookup("google.com", 0, 10).unwrap();
-        assert!(res.header.answer_count > 0);
-    }
+    // #[tokio::test]
+    // async fn test_recursive_lookup() {
+    //     let res = recursive_lookup("google.com", 0, 10).await.unwrap();
+    //     assert!(res.header.answer_count > 0);
+    // }
 }

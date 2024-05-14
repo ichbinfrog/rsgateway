@@ -2,9 +2,10 @@
 
 use rsgateway::gateway::proxy::Proxy;
 
-fn main() {
-    let proxy = Proxy::new("localhost:9090");
-    proxy.run();
+#[tokio::main]
+async fn main() {
+    let proxy = Proxy::new("localhost:9090").await;
+    proxy.run().await;
 }
 
 // ["GET / HTTP/1.1",

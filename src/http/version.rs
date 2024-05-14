@@ -38,7 +38,7 @@ impl TryFrom<Version> for String {
     }
 }
 impl FromStr for Version {
-    type Err = Box<dyn Error>;
+    type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let split_version: Vec<&str> = s.split('.').collect();

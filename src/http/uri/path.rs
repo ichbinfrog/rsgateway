@@ -16,7 +16,7 @@ pub struct Path {
 }
 
 impl TryFrom<Query> for String {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send + Sync>;
 
     fn try_from(query: Query) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -40,7 +40,7 @@ impl TryFrom<Query> for String {
 }
 
 impl FromStr for Query {
-    type Err = Box<dyn Error>;
+    type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut query = Query {
@@ -80,7 +80,7 @@ impl FromStr for Query {
 }
 
 impl TryFrom<Path> for String {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send + Sync>;
 
     fn try_from(path: Path) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -102,7 +102,7 @@ impl TryFrom<Path> for String {
 }
 
 impl FromStr for Path {
-    type Err = Box<dyn Error>;
+    type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut path = Path {

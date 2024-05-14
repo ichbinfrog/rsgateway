@@ -8,11 +8,11 @@ use super::{
 };
 
 #[derive(Debug)]
-pub struct Builder<T> {
-    request: Request<T>,
+pub struct Builder {
+    request: Request,
 }
 
-impl<T> Builder<T> {
+impl Builder {
     pub fn new() -> Self {
         Self {
             request: Request::default(),
@@ -57,7 +57,7 @@ impl<T> Builder<T> {
         self
     }
 
-    pub fn build(self) -> Request<T> {
+    pub fn build(self) -> Request {
         self.request
     }
 }

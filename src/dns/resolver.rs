@@ -1,3 +1,5 @@
+use tokio::net::UdpSocket;
+
 use super::{
     buffer::Header,
     packet::{Packet, Record},
@@ -5,14 +7,17 @@ use super::{
 };
 use std::{
     error::Error,
-    net::{Ipv4Addr, Ipv6Addr, UdpSocket},
+    net::{Ipv4Addr, Ipv6Addr},
 };
 
 pub trait Resolver {
     fn server() -> Vec<Ipv4Addr>;
 }
 
-fn lookup<R>(domain: &str, qtype: QuestionKind) -> Result<Packet, Box<dyn Error>>
+pub async fn lookup<R>(
+    domain: &str,
+    qtype: QuestionKind,
+) -> Result<Packet, Box<dyn Error + Send + Sync>>
 where
     R: Resolver,
 {
@@ -33,19 +38,19 @@ where
         resources: None,
     };
 
-    let mut socket = UdpSocket::bind(("0.0.0.0", 0))?;
+    let mut socket = UdpSocket::bind(("0.0.0.0", 0)).await?;
 
     let servers = R::server();
 
     let server = fastrand::choice(servers).unwrap();
-    packet.lookup(&mut socket, &server.to_string())
+    Ok(packet.lookup(&mut socket, &server.to_string()).await?)
 }
 
-pub fn lookup_a<R>(domain: &str) -> Result<Vec<Ipv4Addr>, Box<dyn Error>>
+pub async fn lookup_a<R>(domain: &str) -> Result<Vec<Ipv4Addr>, Box<dyn Error + Send + Sync>>
 where
     R: Resolver,
 {
-    let packet = lookup::<R>(domain, QuestionKind::A)?;
+    let packet = lookup::<R>(domain, QuestionKind::A).await?;
     Ok(packet
         .answers
         .iter()
@@ -57,11 +62,11 @@ where
         .collect())
 }
 
-pub fn lookup_aaaa<R>(domain: &str) -> Result<Vec<Ipv6Addr>, Box<dyn Error>>
+pub async fn lookup_aaaa<R>(domain: &str) -> Result<Vec<Ipv6Addr>, Box<dyn Error + Send + Sync>>
 where
     R: Resolver,
 {
-    let packet = lookup::<R>(domain, QuestionKind::A)?;
+    let packet = lookup::<R>(domain, QuestionKind::A).await?;
     Ok(packet
         .answers
         .iter()
@@ -73,11 +78,11 @@ where
         .collect())
 }
 
-pub fn lookup_ns<R>(domain: &str) -> Result<Vec<String>, Box<dyn Error>>
+pub async fn lookup_ns<R>(domain: &str) -> Result<Vec<String>, Box<dyn Error + Send + Sync>>
 where
     R: Resolver,
 {
-    let packet = lookup::<R>(domain, QuestionKind::A)?;
+    let packet = lookup::<R>(domain, QuestionKind::A).await?;
     Ok(packet
         .answers
         .iter()
@@ -89,11 +94,11 @@ where
         .collect())
 }
 
-pub fn lookup_cname<R>(domain: &str) -> Result<Vec<String>, Box<dyn Error>>
+pub async fn lookup_cname<R>(domain: &str) -> Result<Vec<String>, Box<dyn Error + Send + Sync>>
 where
     R: Resolver,
 {
-    let packet = lookup::<R>(domain, QuestionKind::A)?;
+    let packet = lookup::<R>(domain, QuestionKind::A).await?;
     Ok(packet
         .authorities
         .iter()

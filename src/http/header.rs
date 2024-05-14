@@ -80,7 +80,7 @@ impl HeaderMap {
         Ok(())
     }
 
-    pub fn get(&self, k: &str) -> Result<HeaderKind, Box<dyn Error>> {
+    pub fn get(&self, k: &str) -> Result<HeaderKind, Box<dyn Error + Send + Sync>> {
         let lk = k.to_lowercase();
         match self.raw.get(&lk) {
             Some(v) => Ok(HeaderKind::try_from((lk.as_str(), v.as_str()))?),
@@ -88,7 +88,7 @@ impl HeaderMap {
         }
     }
 
-    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), Box<dyn Error>> {
+    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), Box<dyn Error + Send + Sync>> {
         self.raw.insert(k.to_string(), String::try_from(v)?);
         Ok(())
     }
@@ -140,7 +140,7 @@ where
 }
 
 impl TryFrom<HeaderKind> for String {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send + Sync>;
 
     fn try_from(header: HeaderKind) -> Result<Self, Self::Error> {
         let mut res: String = String::new();
@@ -172,7 +172,7 @@ impl TryFrom<HeaderKind> for String {
 }
 
 impl TryFrom<(&str, &str)> for HeaderKind {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send + Sync>;
 
     fn try_from((k, v): (&str, &str)) -> Result<Self, Self::Error> {
         match k {

@@ -26,7 +26,7 @@ impl Default for Url {
 }
 
 impl TryFrom<Url> for String {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send + Sync>;
 
     fn try_from(url: Url) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -40,7 +40,7 @@ impl TryFrom<Url> for String {
 }
 
 impl FromStr for Url {
-    type Err = Box<dyn Error>;
+    type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut url = Url::default();

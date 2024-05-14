@@ -75,10 +75,10 @@ impl TryFrom<&mut PacketBuffer> for Question {
 }
 
 impl Question {
-    pub fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
-        buffer.write_qname(self.name.as_str())?;
-        buffer.write(self.kind as u16)?;
-        buffer.write(self.class as u16)?;
+    pub async fn write(&self, buffer: &mut PacketBuffer) -> Result<(), PacketError> {
+        buffer.write_qname(self.name.as_str()).await?;
+        buffer.write(self.kind as u16).await?;
+        buffer.write(self.class as u16).await?;
         Ok(())
     }
 }
