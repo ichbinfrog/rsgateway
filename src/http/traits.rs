@@ -1,4 +1,7 @@
-use std::{io::{self, Cursor}, net::TcpStream};
+use std::{
+    io::{self, Cursor},
+    net::TcpStream,
+};
 
 use super::request::Request;
 

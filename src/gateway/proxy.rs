@@ -1,9 +1,19 @@
 use std::{
     io::Write,
-    net::{TcpListener, TcpStream}, str::FromStr,
+    net::{TcpListener, TcpStream},
+    str::FromStr,
 };
 
-use crate::{dns::resolver::Google, http::{builder::{self, Builder}, client::Client, header::HeaderKind, request::Request, uri::url::Url}};
+use crate::{
+    dns::resolver::Google,
+    http::{
+        builder::{self, Builder},
+        client::Client,
+        header::HeaderKind,
+        request::Request,
+        uri::url::Url,
+    },
+};
 
 pub struct Proxy {
     listener: TcpListener,
@@ -28,7 +38,9 @@ impl Proxy {
             url.push_str(&String::try_from(req.parts.url.path).unwrap());
 
             let mut headers = req.parts.headers.clone();
-            headers.raw.insert("host".to_string(), "httpbin.org".to_string());
+            headers
+                .raw
+                .insert("host".to_string(), "httpbin.org".to_string());
             let resp = Client::get::<Google>(url, headers).unwrap();
             println!("{:?}", resp);
             // req.read_body(&mut buffer).unwrap();

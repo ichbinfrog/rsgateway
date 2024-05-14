@@ -27,6 +27,7 @@ pub enum ParseError {
     InvalidMimeType {
         reason: &'static str,
     },
+    UnknownStatusCode,
 
     ContentTooLarge {
         subject: String,

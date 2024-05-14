@@ -139,8 +139,7 @@ impl<T: Read + TryClone<T>> Request<T> {
         Ok(resp)
     }
 
-    pub fn parse(stream: &mut T) -> Result<(Self, BufReader<T>), Box<dyn Error>>
-    {
+    pub fn parse(stream: &mut T) -> Result<(Self, BufReader<T>), Box<dyn Error>> {
         let mut buffer = BufReader::new(stream.clone()?);
         let mut request = Request::default();
         let mut line = String::with_capacity(MAX_REQUEST_LINE_SIZE);

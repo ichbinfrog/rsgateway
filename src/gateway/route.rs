@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 struct Upstream {
     id: String,

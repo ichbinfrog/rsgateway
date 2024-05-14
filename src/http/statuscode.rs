@@ -1,5 +1,7 @@
 use std::{error::Error, str::FromStr};
 
+use super::error::parse::ParseError;
+
 #[derive(Debug, PartialEq)]
 pub enum StatusCode {
     Continue = 100,
@@ -78,8 +80,73 @@ impl FromStr for StatusCode {
         let u = usize::from_str_radix(s, 10)?;
 
         match u {
+            100 => Ok(StatusCode::Continue),
+            101 => Ok(StatusCode::SwitchingProtocol),
+            102 => Ok(StatusCode::Processing),
+            103 => Ok(StatusCode::EarlyHint),
+            
             200 => Ok(StatusCode::Ok),
-            _ => Ok(StatusCode::Teapot),
+            201 => Ok(StatusCode::Created),
+            202 => Ok(StatusCode::Accepted),
+            203 => Ok(StatusCode::NonAuthoritative),
+            204 => Ok(StatusCode::NoContent),
+            205 => Ok(StatusCode::ResetContent),
+            206 => Ok(StatusCode::PartialContent),
+            207 => Ok(StatusCode::MultiStatus),
+            208 => Ok(StatusCode::AlreadyReported),
+            226 => Ok(StatusCode::IMUsed),
+            
+            300 => Ok(StatusCode::MultipleChoice),
+            301 => Ok(StatusCode::MovedPermanently),
+            302 => Ok(StatusCode::Found),
+            304 => Ok(StatusCode::SeeOther),
+            305 => Ok(StatusCode::NotModified),
+            306 => Ok(StatusCode::UseProxy),
+            307 => Ok(StatusCode::TemporaryRedirect),
+            308 => Ok(StatusCode::PermanentRedirect),
+
+            400 => Ok(StatusCode::BadRequest),
+            401 => Ok(StatusCode::Unauthorized),
+            402 => Ok(StatusCode::PaymentRequired),
+            403 => Ok(StatusCode::Forbidden),
+            404 => Ok(StatusCode::NotFound),
+            405 => Ok(StatusCode::MethodNotAllowed),
+            406 => Ok(StatusCode::NotAcceptable),
+            407 => Ok(StatusCode::ProxyAuthenticationRequired),
+            408 => Ok(StatusCode::RequestTimeout),
+            409 => Ok(StatusCode::Conflict),
+            410 => Ok(StatusCode::Gone),
+            411 => Ok(StatusCode::LengthRequired),
+            412 => Ok(StatusCode::PreconditionFailed),
+            413 => Ok(StatusCode::PayloadTooLarge),
+            414 => Ok(StatusCode::URITooLong),
+            415 => Ok(StatusCode::UnsupportedMediaType),
+            416 => Ok(StatusCode::RangeNotSatisfiable),
+            417 => Ok(StatusCode::ExpectationFailed),
+            418 => Ok(StatusCode::Teapot),
+            421 => Ok(StatusCode::MisdirectedRequest),
+            422 => Ok(StatusCode::UnprocessableContent),
+            423 => Ok(StatusCode::Locked),
+            424 => Ok(StatusCode::FailedDependency),
+            425 => Ok(StatusCode::TooEarly),
+            426 => Ok(StatusCode::UpgradeRequired),
+            428 => Ok(StatusCode::PreconditionRequired),
+            429 => Ok(StatusCode::TooManyRequests),
+            431 => Ok(StatusCode::RequestHeaderFieldsTooLarge),
+            451 => Ok(StatusCode::UnavailableForLegalReasons),
+
+            500 => Ok(StatusCode::InternalServerError),
+            501 => Ok(StatusCode::NotImplemented),
+            502 => Ok(StatusCode::BadGateway),
+            503 => Ok(StatusCode::ServiceUnavailable),
+            504 => Ok(StatusCode::GatewayTimeout),
+            505 => Ok(StatusCode::HTTPVersionNotSupported),
+            506 => Ok(StatusCode::VariantAlsoNegotiates),
+            507 => Ok(StatusCode::InsufficientStorage),
+            508 => Ok(StatusCode::LoopDetected),
+            510 => Ok(StatusCode::NotExtended),
+            511 => Ok(StatusCode::NetworkAuthenticationRequired),
+            _ => Err(ParseError::UnknownStatusCode.into()),
         }
     }
 }

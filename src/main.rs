@@ -2,7 +2,6 @@
 
 use rsgateway::gateway::proxy::Proxy;
 
-
 fn main() {
     let proxy = Proxy::new("localhost:9090");
     proxy.run();

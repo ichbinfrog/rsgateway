@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr};
 
-use crate::http::{uri::path::Path};
+use crate::http::uri::path::Path;
 
 use super::authority::Authority;
 
