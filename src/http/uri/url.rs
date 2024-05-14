@@ -16,7 +16,7 @@ impl Default for Url {
         Self {
             scheme: "".to_string(),
             path: Path {
-                raw_path: "/".to_string(),
+                raw_path: "".to_string(),
                 raw_fragment: None,
                 query: None,
             },
@@ -80,7 +80,7 @@ mod tests {
 
     #[rstest]
     #[case(
-        "https://httpbin.org",
+        "https://httpbin.org:80",
         Url { 
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
@@ -88,7 +88,7 @@ mod tests {
         }
     )]
     #[case(
-        "https://httpbin.org/status",
+        "https://httpbin.org:80/status",
         Url { 
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
@@ -100,7 +100,7 @@ mod tests {
         }
     )]
     #[case(
-        "https://httpbin.org/",
+        "https://httpbin.org:80/",
         Url { 
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
@@ -112,7 +112,7 @@ mod tests {
         }
     )]
     #[case(
-        "https://httpbin.org/status?a=b",
+        "https://httpbin.org:80/status?a=b",
         Url { 
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},

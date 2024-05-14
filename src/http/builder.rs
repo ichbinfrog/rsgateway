@@ -4,7 +4,6 @@ use super::{
     header::{HeaderKind, HeaderMap},
     method::Method,
     request::Request,
-    traits::TryClone,
     uri::{path::Query, url::Url},
 };
 

@@ -1,19 +1,62 @@
 use std::{
-    io::Write,
-    net::{TcpListener, TcpStream},
-    str::FromStr,
+    net::TcpListener,
+    sync::{mpsc, Arc, Mutex},
+    thread::{spawn, JoinHandle},
 };
 
 use crate::{
     dns::resolver::Google,
-    http::{
-        builder::{self, Builder},
-        client::Client,
-        header::HeaderKind,
-        request::Request,
-        uri::url::Url,
-    },
+    http::{client::Client, request::Request},
 };
+
+type Job = Box<dyn FnOnce() + Send + 'static>;
+
+struct Worker {
+    id: usize,
+    thread: JoinHandle<()>,
+}
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = spawn(move || loop {
+            let job = receiver.lock().unwrap().recv().unwrap();
+
+            println!("Worker {id} got a job; executing.");
+
+            job();
+        });
+
+        Worker { id, thread }
+    }
+}
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
+}
+
+impl ThreadPool {
+    fn new(size: usize) -> Self {
+        assert!(size > 0);
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        ThreadPool { workers, sender }
+    }
+
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(f);
+
+        self.sender.send(job).unwrap();
+    }
+}
 
 pub struct Proxy {
     listener: TcpListener,
@@ -27,26 +70,23 @@ impl Proxy {
     }
 
     pub fn run(&self) {
-        loop {
-            let (mut stream, _) = self.listener.accept().unwrap();
-            let mut reader = stream.try_clone().unwrap();
+        let pool = ThreadPool::new(2);
 
-            let (mut req, mut buffer) = Request::parse(&mut stream).unwrap();
-            println!("{:?}", req);
+        for stream in self.listener.incoming() {
+            let mut stream = stream.unwrap();
 
-            let mut url = "http://httpbin.org".to_string();
-            url.push_str(&String::try_from(req.parts.url.path).unwrap());
+            pool.execute(move || {
+                let (req, _) = Request::parse(&mut stream).unwrap();
+                let mut url = "http://httpbin.org".to_string();
+                url.push_str(&String::try_from(req.parts.url.path).unwrap());
 
-            let mut headers = req.parts.headers.clone();
-            headers
-                .raw
-                .insert("host".to_string(), "httpbin.org".to_string());
-            let resp = Client::get::<Google>(url, headers).unwrap();
-            println!("{:?}", resp);
-            // req.read_body(&mut buffer).unwrap();
-            // println!("{:?}", String::from_utf8(req.body.unwrap()).unwrap());
-            // let response = "HTTP/1.1 200 OK\r\n\r\n";
-            // reader.write_all(response.as_bytes()).unwrap();
+                let mut headers = req.parts.headers.clone();
+                headers
+                    .raw
+                    .insert("host".to_string(), "httpbin.org".to_string());
+                let resp = Client::get::<Google>(url, headers).unwrap();
+                println!("{:?}", resp);
+            });
         }
     }
 }

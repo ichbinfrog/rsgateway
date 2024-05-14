@@ -3,8 +3,6 @@ use std::{
     net::TcpStream,
 };
 
-use super::request::Request;
-
 pub trait TryClone<T> {
     fn clone(&self) -> io::Result<T>;
 }

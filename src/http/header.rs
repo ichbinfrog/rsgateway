@@ -190,6 +190,7 @@ impl TryFrom<(&str, &str)> for HeaderKind {
             "user-agent" => Ok(Self::UserAgent(UserAgent::from_str(v)?)),
             "authority" => Ok(Self::Host(Authority::from_str(v)?)),
             "referer" => Ok(Self::Referer(Url::from_str(v)?)),
+            "host" => Ok(Self::Host(Authority::from_str(v)?)),
             _ => Err(ParseError::HeaderStructuredGetNotImplemented.into()),
         }
     }

@@ -349,6 +349,7 @@ mod tests {
 
     use super::*;
     use rstest::*;
+    use tempfile::tempfile;
 
     #[rstest]
     #[case(
@@ -471,7 +472,8 @@ mod tests {
         };
         let mut req: PacketBuffer = PacketBuffer::default();
         packet.write(&mut req).unwrap();
-        let mut file = File::create("foo.txt").unwrap();
+
+        let mut file = tempfile().unwrap();
         file.write_all(&req.buf[0..req.pos]).unwrap();
 
         socket.send_to(&req.buf[0..req.pos], server).unwrap();

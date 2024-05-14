@@ -43,9 +43,7 @@ impl<T: TryClone<T> + Read> Response<T> {
                 Ok(0) => {
                     break;
                 }
-                Ok(_n) => {
-                    println!("{:?}", line);
-                    match state {
+                Ok(_n) => match state {
                     0 => {
                         let mut acc = String::with_capacity(line.len());
                         let mut j = 0;
@@ -75,8 +73,7 @@ impl<T: TryClone<T> + Read> Response<T> {
                         let _ = response.headers.parse(&line);
                         line.clear();
                     }
-                }
-            },
+                },
                 Err(e) => {
                     return Err(e.into());
                 }

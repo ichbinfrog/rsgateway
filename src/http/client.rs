@@ -16,7 +16,6 @@ impl Client {
         let mut stream: TcpStream;
         let request: Request<TcpStream> = Builder::new().get(url).headers(headers).build();
 
-        println!("{:?}", request);
         match request.parts.url.authority {
             Authority::Domain { ref host, port } => {
                 let hosts = resolver::lookup_a::<R>(host)?;

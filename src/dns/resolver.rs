@@ -3,7 +3,6 @@ use super::{
     packet::{Packet, Record},
     question::{Question, QuestionClass, QuestionKind},
 };
-use rand::{seq::SliceRandom, thread_rng};
 use std::{
     error::Error,
     net::{Ipv4Addr, Ipv6Addr, UdpSocket},
@@ -37,7 +36,8 @@ where
     let mut socket = UdpSocket::bind(("0.0.0.0", 0))?;
 
     let servers = R::server();
-    let server = servers.choose(&mut thread_rng()).unwrap();
+
+    let server = fastrand::choice(servers).unwrap();
     packet.lookup(&mut socket, &server.to_string())
 }
 

@@ -3,8 +3,6 @@ use std::{
     net::{Ipv4Addr, Ipv6Addr, UdpSocket},
 };
 
-use rand::Rng;
-
 use super::{
     buffer::{Header, PacketBuffer, ResponseCode},
     error::{LookupError, PacketError},
@@ -427,7 +425,7 @@ pub fn recursive_lookup(
         resources: None,
     };
 
-    let mut server = NAMED_ROOT[rand::thread_rng().gen_range(0..12)].to_string();
+    let mut server = NAMED_ROOT[fastrand::usize(..NAMED_ROOT.len())].to_string();
     let mut socket = UdpSocket::bind(("0.0.0.0", 0))?;
 
     loop {

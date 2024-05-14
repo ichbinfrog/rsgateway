@@ -146,31 +146,6 @@ impl<T: Read + TryClone<T>> Request<T> {
         let mut state: u8 = 0;
 
         loop {
-            // if state == 2 {
-            //     match request.parts.method {
-            //         Method::POST => {
-            //             // Should only be reachable if method == POST
-            //             match request.parts.headers.get("content-length")? {
-            //                 HeaderKind::ContentLength(n) => {
-            //                     println!("reading {:?}", n);
-
-            //                     let mut buf = Vec::<u8>::with_capacity(n);
-            //                     stream.read_exact(&mut buf)?;
-            //                     println!("{:?}", buf);
-            //                 }
-            //                 _ => {
-            //                     println!("holla");
-            //                     break
-            //                 }
-            //             }
-
-            //             // request.body = Some(stream.read_lin);
-            //         }
-            //         _ => {
-            //             break
-            //         }
-            //     }
-            // }
             match buffer.read_line(&mut line) {
                 Ok(0) => {
                     break;
@@ -218,6 +193,14 @@ impl<T: Read + TryClone<T>> Request<T> {
             }
         }
 
+        match request.parts.headers.get("host") {
+            Ok(header) => match header {
+                HeaderKind::Host(authority) => request.parts.url.authority = authority,
+                _ => {}
+            },
+            _ => {}
+        }
+
         Ok((request, buffer))
     }
 
@@ -245,6 +228,7 @@ impl<T: Read + TryClone<T>> Request<T> {
 mod tests {
     use crate::http::uri::authority::Authority;
     use crate::http::uri::path::Path;
+    use pretty_assertions::assert_eq;
     use std::{collections::HashMap, io::Cursor, net::TcpStream};
 
     use super::*;
@@ -268,7 +252,7 @@ mod tests {
                     },
                 },
                 url: Url {
-                    scheme: "http".to_string(),
+                    scheme: "".to_string(),
                     authority: Authority::Domain { host: "localhost".to_string(), port: 9090 },
                     path: Path {
                         raw_path: "/".to_string(),
@@ -289,7 +273,7 @@ mod tests {
         }
     )]
     fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request<Cursor<String>>) {
-        let input = input.join("\n");
+        let input = input.join("\r\n");
         let mut cursor = Cursor::new(input);
 
         let (req, _) = Request::parse(&mut cursor).unwrap();

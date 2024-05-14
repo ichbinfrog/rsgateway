@@ -84,7 +84,7 @@ impl FromStr for StatusCode {
             101 => Ok(StatusCode::SwitchingProtocol),
             102 => Ok(StatusCode::Processing),
             103 => Ok(StatusCode::EarlyHint),
-            
+
             200 => Ok(StatusCode::Ok),
             201 => Ok(StatusCode::Created),
             202 => Ok(StatusCode::Accepted),
@@ -95,7 +95,7 @@ impl FromStr for StatusCode {
             207 => Ok(StatusCode::MultiStatus),
             208 => Ok(StatusCode::AlreadyReported),
             226 => Ok(StatusCode::IMUsed),
-            
+
             300 => Ok(StatusCode::MultipleChoice),
             301 => Ok(StatusCode::MovedPermanently),
             302 => Ok(StatusCode::Found),
