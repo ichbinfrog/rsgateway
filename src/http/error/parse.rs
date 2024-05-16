@@ -6,9 +6,10 @@ pub enum ParseError {
     InvalidStandard,
     MalformedStandardVersion,
     InvalidURI,
-    InvalidIPV6Authority {
-        reason: String,
+    InvalidAuthority {
+        reason: &'static str,
     },
+
     InvalidInteger {
         reason: String,
         subject: &'static str,
@@ -19,7 +20,7 @@ pub enum ParseError {
     HexInvalidStringLength {
         index: usize,
     },
-    HexParseIntError {
+    InvalidPercentEncoding {
         index: usize,
         kind: IntErrorKind,
     },

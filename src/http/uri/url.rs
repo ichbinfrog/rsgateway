@@ -45,7 +45,7 @@ impl FromStr for Url {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut url = Url::default();
 
-        if let Some((scheme, rest)) = s.split_once(":") {
+        if let Some((scheme, rest)) = s.split_once(':') {
             url.scheme = scheme.to_string();
 
             match rest.split_once("//") {
@@ -53,9 +53,9 @@ impl FromStr for Url {
                     Some((authority, path)) => {
                         url.authority = Authority::from_str(authority)?;
 
-                        let mut path: String = path.to_owned();
+                        let mut path = path.to_owned();
                         path.insert(0, '/');
-                        url.path = Path::from_str(path.as_str()).unwrap();
+                        url.path = Path::from_str(&path).unwrap();
                     }
                     _ => {
                         url.authority = Authority::from_str(rest)?;
@@ -96,7 +96,6 @@ mod tests {
                 raw_path: "/status".to_string(),
                 ..Default::default()
             },
-            ..Default::default()
         }
     )]
     #[case(
@@ -108,7 +107,6 @@ mod tests {
                 raw_path: "/".to_string(),
                 ..Default::default()
             },
-            ..Default::default()
         }
     )]
     #[case(
@@ -121,7 +119,6 @@ mod tests {
                 query: Some(Query::from_str("a=b").unwrap()),
                 ..Default::default()
             },
-            ..Default::default()
         }
     )]
     fn test_url_parsing(#[case] input: &str, #[case] expected: Url) {

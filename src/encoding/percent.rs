@@ -35,7 +35,7 @@ pub fn unescape(s: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
                         res.push(hex as char);
                     }
                     Err(e) => {
-                        return Err(ParseError::HexParseIntError {
+                        return Err(ParseError::InvalidPercentEncoding {
                             index: i,
                             kind: e.kind().clone(),
                         }
@@ -83,8 +83,7 @@ mod tests {
     #[case("%1")]
     #[case("%123%45%6")]
     fn test_unescape_invalid_length(#[case] input: &str) {
-        let result = unescape(input);
-        assert!(result.is_err());
+        assert!(unescape(input).is_err());
     }
 
     #[rstest]

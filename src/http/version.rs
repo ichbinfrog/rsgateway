@@ -1,21 +1,11 @@
 use crate::http::error::parse::ParseError;
 use std::{error::Error, str::FromStr};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct Version {
     pub major: usize,
     pub minor: Option<usize>,
     pub patch: Option<usize>,
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Self {
-            major: 0,
-            minor: None,
-            patch: None,
-        }
-    }
 }
 
 impl TryFrom<Version> for String {
@@ -45,7 +35,7 @@ impl FromStr for Version {
         match split_version.len() {
             1 => {
                 return Ok(Version {
-                    major: usize::from_str_radix(split_version[0], 10)?,
+                    major: str::parse(split_version[0])?,
                     minor: None,
                     patch: None,
                 })
@@ -54,8 +44,8 @@ impl FromStr for Version {
                 let (major_raw, minor_raw) = (split_version[0], split_version[1]);
 
                 return Ok(Version {
-                    major: usize::from_str_radix(major_raw, 10)?,
-                    minor: Some(usize::from_str_radix(minor_raw, 10)?),
+                    major: str::parse(major_raw)?,
+                    minor: Some(str::parse(minor_raw)?),
                     patch: None,
                 });
             }
@@ -64,9 +54,9 @@ impl FromStr for Version {
                     (split_version[0], split_version[1], split_version[2]);
 
                 return Ok(Version {
-                    major: usize::from_str_radix(major_raw, 10)?,
-                    minor: Some(usize::from_str_radix(minor_raw, 10)?),
-                    patch: Some(usize::from_str_radix(patch_raw, 10)?),
+                    major: str::parse(major_raw)?,
+                    minor: Some(str::parse(minor_raw)?),
+                    patch: Some(str::parse(patch_raw)?),
                 });
             }
             _ => {}

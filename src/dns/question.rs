@@ -1,6 +1,6 @@
 use super::{buffer::PacketBuffer, error::PacketError};
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd, Eq, Ord)]
 pub enum QuestionKind {
     A = 1,
     NS = 2,
@@ -91,10 +91,10 @@ mod tests {
     #[rstest]
     #[case(
         &[
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8,
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0,
-            0, 01,
-            0, 01,
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
+            3, b'c', b'o', b'm', 0,
+            0, 1,
+            0, 1,
         ],
         Question { 
             name: "google.com".to_string(), 
@@ -104,10 +104,10 @@ mod tests {
     )]
     #[case(
         &[
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8,
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0,
-            0, 05,
-            0, 01,
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
+            3, b'c', b'o', b'm', 0,
+            0, 5,
+            0, 1,
         ],
         Question { 
             name: "google.com".to_string(), 

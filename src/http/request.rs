@@ -78,15 +78,12 @@ impl FromStr for Standard {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let split: Vec<&str> = s.split('/').collect();
-        match split.len() {
-            2 => {
-                let (name, version) = (split[0], split[1]);
-                return Ok(Standard {
-                    name: name.to_string(),
-                    version: Version::from_str(version)?,
-                });
-            }
-            _ => {}
+        if split.len() == 2 {
+            let (name, version) = (split[0], split[1]);
+            return Ok(Standard {
+                name: name.to_string(),
+                version: Version::from_str(version)?,
+            });
         }
         Err(ParseError::InvalidStandard.into())
     }
@@ -109,7 +106,7 @@ impl Debug for Request {
 
 impl PartialEq for Request {
     fn eq(&self, other: &Self) -> bool {
-        return self.parts == other.parts && self.body == other.body;
+        self.parts == other.parts && self.body == other.body
     }
 }
 
@@ -131,11 +128,11 @@ impl Default for Request {
 impl Request {
     pub async fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
         let req = String::try_from(self.parts)?;
-        stream.write(req.as_bytes()).await?;
+        stream.write_all(req.as_bytes()).await?;
 
         if let Some(body) = self.body {
-            stream.write(b"\r\n").await?;
-            stream.write(&body).await?;
+            stream.write_all(b"\r\n").await?;
+            stream.write_all(&body).await?;
         }
 
         Ok(())
@@ -146,7 +143,7 @@ impl Request {
         stream: &mut TcpStream,
     ) -> Result<Response, Box<dyn Error + Send + Sync>> {
         self.write(stream).await?;
-        Ok(Response::parse(stream).await?)
+        Response::parse(stream).await
     }
 
     pub async fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn Error + Send + Sync>> {
@@ -203,27 +200,22 @@ impl Request {
             }
         }
 
-        match request.parts.headers.get("host") {
-            Ok(header) => match header {
-                HeaderKind::Host(authority) => request.parts.url.authority = authority,
-                _ => {}
-            },
-            _ => {}
+        if let Ok(HeaderKind::Host(authority)) = request.parts.headers.get("host") {
+            request.parts.url.authority = authority;
         }
 
         if request.hasbody {
             match request.parts.headers.get("content-length") {
                 Ok(value) => match value {
                     HeaderKind::ContentLength(n) => {
-                        let mut body = Vec::new();
-                        body.resize(n, 0u8);
+                        let mut body = vec![0u8; n];
                         buffer.read_exact(&mut body).await?;
                         request.body = Some(body);
                         return Ok(request);
                     }
                     _ => return Err(ParseError::MissingContentLengthHeader.into()),
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         }
 
@@ -236,7 +228,7 @@ mod tests {
     use crate::http::uri::authority::Authority;
     use crate::http::uri::path::Path;
     use pretty_assertions::assert_eq;
-    use std::{collections::HashMap, io::Cursor};
+    use std::collections::HashMap;
     use tokio::net::{TcpListener, TcpStream};
 
     use super::*;
@@ -280,18 +272,14 @@ mod tests {
         }
     )]
     #[tokio::test]
-    async fn test_parse_request(
-        #[case] input: Vec<&str>,
-        #[case] expected: Request,
-    ) {
-
+    async fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request) {
         let listener = TcpListener::bind(("0.0.0.0", 0)).await.unwrap();
         let addr = listener.local_addr().unwrap();
         let mut stream = TcpStream::connect(addr).await.unwrap();
 
         let input = input.join("\r\n");
-        stream.write(input.as_bytes()).await.unwrap();
-        
+        stream.write_all(input.as_bytes()).await.unwrap();
+
         let req = Request::parse(&mut stream).await.unwrap();
         assert_eq!(req, expected);
     }

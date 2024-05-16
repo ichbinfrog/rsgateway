@@ -1,7 +1,7 @@
 use tokio::net::TcpListener;
 
 use crate::{
-    dns::resolver::Google,
+    dns::resolver::DNS_IP_GOOGLE,
     http::{builder::Builder, client::Client, method::Method, request::Request},
 };
 
@@ -35,9 +35,12 @@ impl Proxy {
                     .headers(headers)
                     .body(req.body)
                     .build();
-                let resp = Client::perform::<Google>(proxied_request).await.unwrap();
-                println!("{:?}", resp);
-                println!("{:?}", String::from_utf8(resp.body.unwrap()).unwrap());
+
+                let resp = Client::perform(proxied_request, DNS_IP_GOOGLE)
+                    .await
+                    .unwrap();
+
+                resp.write(&mut stream).await.unwrap();
             });
         }
     }

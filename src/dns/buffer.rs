@@ -41,7 +41,7 @@ impl PacketBuffer {
         u8: AsPrimitive<T> + Num + Sized,
     {
         let n = size_of::<T>().sub(1);
-        let mask: T = (0xFF as u8).as_();
+        let mask: T = (0xFF_u8).as_();
 
         for i in 0..n {
             self.buf[pos + i] = ((val >> ((n - i) * 8)) & mask).as_();
@@ -69,7 +69,7 @@ impl PacketBuffer {
         }
 
         let n = size_of::<T>();
-        let mask: T = (0xFF as u8).as_();
+        let mask: T = (0xFF_u8).as_();
         for i in (0..n).rev() {
             self.buf[self.pos] = ((val >> (i * 8)) & mask).as_();
             self.pos += 1;
@@ -184,7 +184,7 @@ impl PacketBuffer {
                 if len == 0 {
                     break;
                 }
-                res.push_str(&delimiter);
+                res.push_str(delimiter);
                 res.push_str(&String::from_utf8_lossy(&self.buf[cur..cur + len as usize]));
                 delimiter = ".";
                 cur += len as usize;
@@ -215,7 +215,7 @@ impl From<u8> for ResponseCode {
             3 => ResponseCode::NameError,
             4 => ResponseCode::NotImplemented,
             5 => ResponseCode::Refused,
-            0 | _ => ResponseCode::NoError,
+            _ => ResponseCode::NoError,
         }
     }
 }
@@ -285,20 +285,20 @@ impl Header {
         */
         buffer
             .write::<u8>(
-                ((self.query as u8) << 7) as u8
-                    | (self.opcode << 3) as u8
-                    | ((self.authoritative_answer as u8) << 2) as u8
-                    | ((self.truncated_message as u8) << 1) as u8
+                ((self.query as u8) << 7)
+                    | (self.opcode << 3)
+                    | ((self.authoritative_answer as u8) << 2)
+                    | ((self.truncated_message as u8) << 1)
                     | self.recursion_desired as u8,
             )
             .await?;
         buffer
             .write::<u8>(
-                ((self.recursion_available as u8) << 7) as u8
-                    | ((self.zero as u8) << 6) as u8
-                    | ((self.authed_data as u8) << 5) as u8
-                    | ((self.checking_disabled as u8) << 4) as u8
-                    | (self.response_code as u8) as u8,
+                ((self.recursion_available as u8) << 7)
+                    | ((self.zero as u8) << 6)
+                    | ((self.authed_data as u8) << 5)
+                    | ((self.checking_disabled as u8) << 4)
+                    | (self.response_code as u8),
             )
             .await?;
 
@@ -421,18 +421,18 @@ mod tests {
     #[rstest]
     #[case(
         &[
-            3, 'w' as u8, 'w' as u8, 'w' as u8,
-            7, 'h' as u8, 't' as u8, 't' as u8, 'p' as u8, 'b' as u8, 'i' as u8, 'n' as u8,
-            3, 'o' as u8, 'r' as u8, 'g' as u8,
+            3, b'w', b'w', b'w',
+            7, b'h', b't', b't', b'p', b'b', b'i', b'n',
+            3, b'o', b'r', b'g',
         ],
         "www.httpbin.org",
     )]
     #[case(
         &[
-            3, 'w' as u8, 'w' as u8, 'w' as u8,
+            3, b'w', b'w', b'w',
             0xC0, 10,
             0, 0, 0, 0,
-            3, 'f' as u8, 'o' as u8, 'o' as u8,
+            3, b'f', b'o', b'o',
         ],
         "www.foo",
     )]

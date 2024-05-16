@@ -51,7 +51,7 @@ impl FromStr for Query {
 
         let mut cur = s.to_string().clone();
 
-        while cur.len() > 0 {
+        while !cur.is_empty() {
             let mut hop: usize = cur.len();
             let mut entry = cur.clone();
 
@@ -65,13 +65,10 @@ impl FromStr for Query {
                 query
                     .lookup
                     .entry(percent::unescape(key)?)
-                    .or_insert(Vec::new())
+                    .or_default()
                     .push(percent::unescape(value)?);
             }
 
-            if hop > cur.len() {
-                break;
-            }
             cur = cur.split_off(hop);
         }
 
@@ -94,7 +91,7 @@ impl TryFrom<Path> for String {
 
         if let Some(fragment) = &path.raw_fragment {
             res.push('#');
-            res.push_str(&fragment);
+            res.push_str(fragment);
         }
 
         Ok(res)
@@ -112,16 +109,11 @@ impl FromStr for Path {
         };
 
         let mut raw = s;
-        match s.split_once('#') {
-            Some((r, f)) => {
-                if f.len() > 0 {
-                    path.raw_fragment = Some(percent::unescape(f)?);
-                } else {
-                    path.raw_fragment = None
-                }
-                raw = r
+        if let Some((r, f)) = s.split_once('#') {
+            if !f.is_empty() {
+                path.raw_fragment = Some(percent::unescape(f)?);
             }
-            None => {}
+            raw = r
         }
 
         match raw.split_once('?') {
@@ -190,10 +182,38 @@ mod tests {
             count: 2,
         }
     )]
+    #[case("a=%3A&", 
+        Query { 
+            raw: "a=%3A&".to_string(), 
+            lookup: HashMap::from([
+                ("a".to_string(), Vec::from([":".to_string()])),
+            ]),
+            count: 1,
+        }
+    )]
     fn test_query_parsing(#[case] input: &str, #[case] expected: Query) {
         let query = Query::from_str(input).unwrap();
         assert_eq!(query, expected);
-        assert_eq!(String::try_from(query).unwrap(), input);
+        
+        let output = String::try_from(query.clone()).unwrap();
+        let double = Query::from_str(&output).unwrap();
+
+        assert_eq!(double.lookup, query.lookup);
+    }
+
+    #[rstest]
+    #[case("%zzzz=a")]
+    #[case("%=a")]
+    #[case("%a=a")]
+    #[case("%1=a")]
+    #[case("%123%45%6=a")]
+    #[case("a=%zzzz")]
+    #[case("a=%")]
+    #[case("a=%a")]
+    #[case("a=%1")]
+    #[case("a=%123%45%6")]
+    fn test_query_parsing_error(#[case] input: &str) {
+        assert!(Query::from_str(input).is_err());
     }
 
     #[rstest]

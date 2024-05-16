@@ -17,12 +17,12 @@ fn lookup(index: u8) -> char {
 
 #[inline]
 fn inverse(ch: char) -> u8 {
-    if 'A' <= ch && ch <= 'Z' {
-        return ch as u8 - 'A' as u8;
-    } else if 'a' <= ch && ch <= 'z' {
-        return ch as u8 - 'a' as u8 + 26;
-    } else if '0' <= ch && ch <= '9' {
-        return 52 + ch as u8 - '0' as u8;
+    if ch.is_ascii_uppercase() {
+        return ch as u8 - b'A';
+    } else if ch.is_ascii_lowercase() {
+        return ch as u8 - b'a' + 26;
+    } else if ch.is_numeric() {
+        return 52 + ch as u8 - b'0';
     } else if ch == '+' {
         return 62;
     } else if ch == '/' {
@@ -109,7 +109,7 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("a", "YQ==")]
+    #[case("a", "YA==")]
     #[case("Su", "U3U=")]
     #[case("Sun", "U3Vu")]
     #[case("Sund", "U3VuZA==")]

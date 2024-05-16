@@ -117,14 +117,11 @@ where
     let mut res: String = String::new();
     if let Some(values) = values {
         let n = values.len();
-        let mut i = 0;
-
-        for value in values {
+        for (i, value) in values.into_iter().enumerate() {
             res.push_str(&String::try_from(value)?);
             if n != 1 && i != n - 1 {
                 res.push(',');
             }
-            i += 1;
         }
     }
     Ok(res)
@@ -176,17 +173,15 @@ impl TryFrom<(&str, &str)> for HeaderKind {
 
     fn try_from((k, v): (&str, &str)) -> Result<Self, Self::Error> {
         match k {
-            "age" => Ok(Self::Age(usize::from_str_radix(v, 10)?)),
-            "allow" => Ok(Self::Allow {
-                0: Some(try_header_vec_from_string::<Method>(v)),
-            }),
-            "accept" => Ok(Self::Accept {
-                0: Some(try_header_vec_from_string::<MimeType>(v)),
-            }),
-            "content-type" => Ok(Self::ContentType {
-                0: Some(try_header_vec_from_string::<MimeType>(v)),
-            }),
-            "content-length" => Ok(Self::ContentLength(usize::from_str_radix(v, 10)?)),
+            "age" => Ok(Self::Age(str::parse(v)?)),
+            "allow" => Ok(Self::Allow(Some(try_header_vec_from_string::<Method>(v)))),
+            "accept" => Ok(Self::Accept(Some(try_header_vec_from_string::<MimeType>(
+                v,
+            )))),
+            "content-type" => Ok(Self::ContentType(Some(try_header_vec_from_string::<
+                MimeType,
+            >(v)))),
+            "content-length" => Ok(Self::ContentLength(str::parse(v)?)),
             "user-agent" => Ok(Self::UserAgent(UserAgent::from_str(v)?)),
             "authority" => Ok(Self::Host(Authority::from_str(v)?)),
             "referer" => Ok(Self::Referer(Url::from_str(v)?)),
@@ -211,8 +206,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut input: Vec<u8> = Vec::with_capacity(max_header_size + 1);
-        input.resize(max_header_size + 1, 0);
+        let input: Vec<u8> = vec![0; max_header_size + 1];
         let long = String::from_utf8(input).unwrap();
 
         // key > MAX_HEADER_SIZE
@@ -242,9 +236,7 @@ mod tests {
 
         assert_eq!(
             headers.get("allow").unwrap(),
-            HeaderKind::Allow {
-                0: Some(vec![Method::GET, Method::PUT, Method::POST])
-            }
+            HeaderKind::Allow(Some(vec![Method::GET, Method::PUT, Method::POST]))
         );
         assert_eq!(
             headers.get("content-length").unwrap(),
@@ -252,16 +244,14 @@ mod tests {
         );
         assert_eq!(
             headers.get("accept").unwrap(),
-            HeaderKind::Accept {
-                0: Some(vec![
-                    MimeType::new("application".to_string(), "xhtml+xml".to_string(), None),
-                    MimeType::new(
-                        "*".to_string(),
-                        "*".to_string(),
-                        Some(("q".to_string(), "0.8".to_string())),
-                    ),
-                ])
-            }
+            HeaderKind::Accept(Some(vec![
+                MimeType::new("application".to_string(), "xhtml+xml".to_string(), None),
+                MimeType::new(
+                    "*".to_string(),
+                    "*".to_string(),
+                    Some(("q".to_string(), "0.8".to_string())),
+                ),
+            ]))
         );
 
         println!("{:?}", String::try_from(headers).unwrap());

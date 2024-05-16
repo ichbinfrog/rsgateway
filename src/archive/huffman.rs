@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn test_something() {
         let input = "this is an example of a huffman tree";
-        let tree = Tree::new(&input);
+        let tree = Tree::new(input);
 
         let encoded = tree.encode(input);
         assert_eq!(input, tree.decode(&encoded));

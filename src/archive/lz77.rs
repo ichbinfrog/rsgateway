@@ -18,17 +18,14 @@ pub struct SearchBuffer {
 }
 
 #[inline]
-fn find(haystack: &Vec<u8>, needle: &[u8]) -> Option<usize> {
+fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     if haystack.len() < needle.len() {
         return None;
     }
 
-    for i in (0..haystack.len() - needle.len() + 1).rev() {
-        if haystack[i..i + needle.len()] == *needle {
-            return Some(i);
-        }
-    }
-    None
+    (0..haystack.len() - needle.len() + 1)
+        .rev()
+        .find(|&i| haystack[i..i + needle.len()] == *needle)
 }
 
 impl SearchBuffer {
@@ -117,7 +114,7 @@ impl<'a> Buffer<'a> {
                     let m = Match::from(buf);
                     if m.offset == 0 && m.length == 0 {
                         search_buffer.insert(m.value);
-                        writer.write(&[m.value])?;
+                        writer.write_all(&[m.value])?;
                         continue;
                     }
 
@@ -126,12 +123,12 @@ impl<'a> Buffer<'a> {
                     let start = cur_buffer_length - m.offset;
                     let end = cur_buffer_length - m.offset + m.length;
 
-                    writer.write(&search_buffer.data[start..end])?;
+                    writer.write_all(&search_buffer.data[start..end])?;
                     for i in start..end {
                         search_buffer.insert(search_buffer.data[i]);
                     }
                     search_buffer.insert(m.value);
-                    writer.write(&[m.value])?;
+                    writer.write_all(&[m.value])?;
                 }
                 Err(e) => return Err(e.into()),
             }
@@ -146,10 +143,10 @@ impl<'a> Buffer<'a> {
         W: Write,
     {
         writer
-            .write(&[
+            .write_all(&[
                 ((m.offset & !0xF) >> 4) as u8,
                 ((m.offset & 0xF) << 4) as u8 | (m.length & 0xF) as u8,
-                m.value as u8,
+                m.value,
             ])
             .unwrap();
     }
@@ -207,11 +204,7 @@ impl<'a> Buffer<'a> {
     }
 
     #[inline]
-    fn find_longest_match(
-        &self,
-        search_buffer: &Vec<u8>,
-        lookahead_buffer: &[u8],
-    ) -> Option<Match> {
+    fn find_longest_match(&self, search_buffer: &[u8], lookahead_buffer: &[u8]) -> Option<Match> {
         let ns = search_buffer.len();
         let nl = lookahead_buffer.len();
 
@@ -225,15 +218,12 @@ impl<'a> Buffer<'a> {
 
         for n in (1..std::cmp::min(ns, nl)).rev() {
             let index = find(search_buffer, &lookahead_buffer[..n]);
-            match index {
-                Some(x) => {
-                    return Some(Match {
-                        offset: ns - x,
-                        length: n,
-                        value: lookahead_buffer[n],
-                    });
-                }
-                None => {}
+            if let Some(x) = index {
+                return Some(Match {
+                    offset: ns - x,
+                    length: n,
+                    value: lookahead_buffer[n],
+                });
             }
         }
 
@@ -266,16 +256,16 @@ pub mod tests {
         #[case] needle: &[u8],
         #[case] index: Option<usize>,
     ) {
-        assert_eq!(find(&haystack, &needle), index);
+        assert_eq!(find(&haystack, needle), index);
     }
 
     #[test]
     fn test_impl() {
         let filename = "tests/les_miserables.txt";
-        let mut input = File::open(&filename).unwrap();
-        let metadata = fs::metadata(&filename).unwrap();
+        let mut input = File::open(filename).unwrap();
+        let metadata = fs::metadata(filename).unwrap();
         let mut input_buffer: Vec<u8> = vec![0; metadata.len() as usize];
-        input.read(&mut input_buffer).unwrap();
+        input.read_exact(&mut input_buffer).unwrap();
 
         let mut buf: Buffer<'_> = Buffer::new(&input_buffer, 4095, 15);
 
@@ -288,7 +278,7 @@ pub mod tests {
     #[test]
     fn test_read() {
         let filename = "tests/les_miserables_compressed";
-        let input = File::open(&filename).unwrap();
+        let input = File::open(filename).unwrap();
         let mut buf: Buffer<'_> = Buffer::new(&[], 4095, 15);
 
         let mut reader = BufReader::new(input);

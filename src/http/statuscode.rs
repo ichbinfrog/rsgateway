@@ -1,4 +1,4 @@
-use std::{error::Error, str::FromStr};
+use std::{error::Error, fmt::Debug, str::FromStr};
 
 use super::error::parse::ParseError;
 
@@ -73,11 +73,87 @@ pub enum StatusCode {
     NetworkAuthenticationRequired = 511,
 }
 
+impl TryFrom<StatusCode> for String {
+    type Error = ParseError;
+
+    fn try_from(s: StatusCode) -> Result<Self, Self::Error> {
+        let num = match s {
+            StatusCode::Continue => 100,
+            StatusCode::SwitchingProtocol => 101,
+            StatusCode::Processing => 102,
+            StatusCode::EarlyHint => 103,
+
+            StatusCode::Ok => 200,
+            StatusCode::Created => 201,
+            StatusCode::Accepted => 202,
+            StatusCode::NonAuthoritative => 203,
+            StatusCode::NoContent => 204,
+            StatusCode::ResetContent => 205,
+            StatusCode::PartialContent => 206,
+            StatusCode::MultiStatus => 207,
+            StatusCode::AlreadyReported => 208,
+            StatusCode::IMUsed => 226,
+
+            StatusCode::MultipleChoice => 300,
+            StatusCode::MovedPermanently => 301,
+            StatusCode::Found => 302,
+            StatusCode::SeeOther => 303,
+            StatusCode::NotModified => 304,
+            StatusCode::UseProxy => 305,
+            StatusCode::SwitchProxy => 306,
+            StatusCode::TemporaryRedirect => 307,
+            StatusCode::PermanentRedirect => 308,
+
+            StatusCode::BadRequest => 400,
+            StatusCode::Unauthorized => 401,
+            StatusCode::PaymentRequired => 402,
+            StatusCode::Forbidden => 403,
+            StatusCode::NotFound => 404,
+            StatusCode::MethodNotAllowed => 405,
+            StatusCode::NotAcceptable => 406,
+            StatusCode::ProxyAuthenticationRequired => 407,
+            StatusCode::RequestTimeout => 408,
+            StatusCode::Conflict => 409,
+            StatusCode::Gone => 410,
+            StatusCode::LengthRequired => 411,
+            StatusCode::PreconditionFailed => 412,
+            StatusCode::PayloadTooLarge => 413,
+            StatusCode::URITooLong => 414,
+            StatusCode::UnsupportedMediaType => 415,
+            StatusCode::RangeNotSatisfiable => 416,
+            StatusCode::ExpectationFailed => 417,
+            StatusCode::Teapot => 418,
+            StatusCode::MisdirectedRequest => 421,
+            StatusCode::UnprocessableContent => 422,
+            StatusCode::Locked => 423,
+            StatusCode::FailedDependency => 424,
+            StatusCode::TooEarly => 425,
+            StatusCode::UpgradeRequired => 426,
+            StatusCode::PreconditionRequired => 428,
+            StatusCode::TooManyRequests => 429,
+            StatusCode::RequestHeaderFieldsTooLarge => 431,
+            StatusCode::UnavailableForLegalReasons => 451,
+            StatusCode::InternalServerError => 500,
+            StatusCode::NotImplemented => 501,
+            StatusCode::BadGateway => 502,
+            StatusCode::ServiceUnavailable => 503,
+            StatusCode::GatewayTimeout => 504,
+            StatusCode::HTTPVersionNotSupported => 505,
+            StatusCode::VariantAlsoNegotiates => 506,
+            StatusCode::InsufficientStorage => 507,
+            StatusCode::LoopDetected => 508,
+            StatusCode::NotExtended => 510,
+            StatusCode::NetworkAuthenticationRequired => 511,
+        };
+        Ok(format!("{} {:?}", num, s))
+    }
+}
+
 impl FromStr for StatusCode {
     type Err = Box<dyn Error + Send + Sync>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let u = usize::from_str_radix(s, 10)?;
+        let u: usize = str::parse(s)?;
 
         match u {
             100 => Ok(StatusCode::Continue),

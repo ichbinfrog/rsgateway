@@ -697,7 +697,6 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "fastrand",
- "futures",
  "itertools 0.12.1",
  "num-traits",
  "pretty_assertions",

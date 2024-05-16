@@ -111,7 +111,7 @@ fn generate_table(polynomial: u128) -> [u128; 256] {
             if c & 1 == 1 {
                 c = polynomial ^ (c >> 1)
             } else {
-                c = c >> 1;
+                c >>= 1;
             }
         }
         table[i as usize] = c;
@@ -125,7 +125,7 @@ pub fn checksum(input: &str, table: [u128; 256]) -> u128 {
     for b in input.as_bytes() {
         let mut c = crc ^ 0xffffffff;
         c = table[((c ^ *b as u128) & 0xff) as usize] ^ (c >> 8);
-        c = c ^ 0xffffffff;
+        c ^= 0xffffffff;
         crc = c;
     }
 

@@ -7,7 +7,7 @@ use tokio::net::UdpSocket;
 
 use super::{
     buffer::{Header, PacketBuffer},
-    error::{PacketError},
+    error::PacketError,
     question::{Question, QuestionKind},
 };
 
@@ -103,7 +103,7 @@ impl TryFrom<&mut PacketBuffer> for Record {
                     ((raw >> 24) & 0xFF) as u8,
                     ((raw >> 16) & 0xFF) as u8,
                     ((raw >> 8) & 0xFF) as u8,
-                    ((raw >> 0) & 0xFF) as u8,
+                    (raw & 0xFF) as u8,
                 );
 
                 Ok(Self::A {
@@ -228,7 +228,7 @@ impl Record {
                 let prelength = buffer.pos;
                 buffer.write(*rd_length).await?;
                 buffer.write(*preference).await?;
-                buffer.write_qname(&exchange).await?;
+                buffer.write_qname(exchange).await?;
                 buffer.set(prelength, (buffer.pos - prelength + 2) as u16)?;
             }
             Record::SOA {
@@ -248,8 +248,8 @@ impl Record {
                 let prelength = buffer.pos;
                 buffer.write(*rd_length).await?;
 
-                buffer.write_qname(&mname).await?;
-                buffer.write_qname(&rname).await?;
+                buffer.write_qname(mname).await?;
+                buffer.write_qname(rname).await?;
                 buffer.write(*serial).await?;
                 buffer.write(*refresh).await?;
                 buffer.write(*retry).await?;
@@ -483,8 +483,8 @@ mod tests {
             0x00, 
             0x00, 
             0x00, 0x00, 
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8, 
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0x00, 
+            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            3, b'c', b'o', b'm', 0x00, 
             0x00, 0x01, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 
             0x00, 0x01, 0x2c, 0x00, 0x04, 0xac, 0xd9, 0x14, 0xce,        
         ],
@@ -536,8 +536,8 @@ mod tests {
             0x00, 0x01,
             0x00, 0x00,
             0x00, 0x00, 
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8, 
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0x00, 
+            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            3, b'c', b'o', b'm', 0x00, 
             0x00, 0x1C, 
             0x00, 0x01,
             0xC0, 0x0C,
@@ -602,15 +602,15 @@ mod tests {
             0x42,0xf4,
             0x81,0x80,0x00,0x01,
             0x00,0x00,0x00,0x01,0x00,0x00,
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8, 
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0x00,
+            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            3, b'c', b'o', b'm', 0x00,
             0x00,0x05,
             0x00,0x01,
             0xc0,0x0c,0x00,0x06,0x00,0x01,
             0x00,0x00,0x00,0x3c,0x00,0x26,
-            3,'n' as u8, 's' as u8, '1' as u8, 0xc0,
+            3,b'n', b's', b'1', 0xc0,
             0x0c,
-            9,'d' as u8, 'n' as u8, 's' as u8, '-' as u8, 'a' as u8, 'd' as u8, 'm' as u8, 'i' as u8, 'n' as u8 ,0xc0,
+            9,b'd', b'n', b's', b'-', b'a', b'd', b'm', b'i', b'n' ,0xc0,
             0x0c,0x25,
             0x88,0x0f,0xe9,0x00,0x00,
             0x03,0x84,0x00,0x00,0x03,
@@ -669,29 +669,29 @@ mod tests {
             0x98,0xf3,
             0x81,0x80,0x00,0x01,
             0x00,0x04,0x00,0x00,0x00,0x00,
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8, 
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0x00,
-            0, 2 as u8,
+            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            3, b'c', b'o', b'm', 0x00,
+            0, 2,
             0x00,0x01,
             0xc0,0x0c,0x00,0x02,
             0x00,0x01,0x00,0x00,
             0x21,0x25,0x00,0x06,
-            3,'n' as u8, 's' as u8, '2' as u8,
+            3,b'n', b's', b'2',
             0xc0,0x0c,0xc0,0x0c,
             0x00,0x02,0x00,0x01,
             0x00,0x00,0x21,0x25,
             0x00,0x06,
-            0x03,'n' as u8, 's' as u8, '4' as u8,
+            0x03,b'n', b's', b'4',
             0xc0,0x0c,0xc0,0x0c,
             0x00,0x02,0x00,0x01,
             0x00,0x00,0x21,0x25,
             0x00,0x06,
-            0x03,'n' as u8, 's' as u8, '1' as u8,
+            0x03,b'n', b's', b'1',
             0xc0,0x0c,0xc0,0x0c,
             0x00,0x02,0x00,0x01,
             0x00,0x00,0x21,0x25,
             0x00,0x06,
-            0x03,'n' as u8, 's' as u8, '2' as u8,
+            0x03,b'n', b's', b'2',
             0xc0,0x0c
         ],
         Packet { 
@@ -770,13 +770,13 @@ mod tests {
             0xc2,0x39,
             0x81,0x80,0x00,0x01,
             0x00,0x01,0x00,0x00,0x00,0x00,
-            6, 'g' as u8, 'o' as u8, 'o' as u8, 'g' as u8, 'l' as u8, 'e' as u8, 
-            3, 'c' as u8, 'o' as u8, 'm' as u8, 0x00,
-            0, 15 as u8,
+            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            3, b'c', b'o', b'm', 0x00,
+            0, 15u8,
             0x00,0x01,0xc0,0x0c,0x00,
             0x0f,0x00,0x01,0x00,0x00,
             0x00,0xbf,0x00,0x09,0x00,0x0a,
-            4, 's' as u8, 'm' as u8, 't' as u8, 'p' as u8,
+            4, b's', b'm', b't', b'p',
             0xc0,0x0c
         ],
         Packet { 

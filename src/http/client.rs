@@ -1,27 +1,27 @@
-use std::error::Error;
+use std::{error::Error, net::Ipv4Addr};
 
 use tokio::net::TcpStream;
 
 use super::{
-    error::parse::ParseError,
-    request::Request, response::Response, uri::authority::Authority,
+    error::parse::ParseError, request::Request, response::Response, uri::authority::Authority,
 };
-use crate::dns::resolver::{self, Resolver};
+use crate::dns::resolver::Resolver;
 
 pub struct Client {}
 
 impl Client {
-    pub async fn perform<R>(request: Request) -> Result<Response, Box<dyn Error + Send + Sync>>
-    where
-        R: Resolver,
-    {
+    pub async fn perform(
+        request: Request,
+        dns_ip: &[Ipv4Addr],
+    ) -> Result<Response, Box<dyn Error + Send + Sync>> {
         let mut stream: TcpStream;
+        let resolver = Resolver::new();
 
         match request.parts.url.authority {
             Authority::Domain { ref host, port } => {
-                let hosts = resolver::lookup_a::<R>(host).await?;
-                let host = hosts.get(0).unwrap();
-                stream = TcpStream::connect((host.clone(), port as u16)).await?;
+                let hosts: Vec<Ipv4Addr> = resolver.lookup_a(host, dns_ip).await?;
+                let host = hosts.first().unwrap();
+                stream = TcpStream::connect((*host, port as u16)).await?;
             }
             Authority::IPv4 { ip, port } => {
                 stream = TcpStream::connect((ip, port as u16)).await?;
@@ -34,15 +34,20 @@ impl Client {
             }
         }
 
-        Ok(request.call(&mut stream).await?)
+        request.call(&mut stream).await
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::http::{builder::Builder, header::{HeaderKind, HeaderMap}, method::Method, mimetype::MimeType, statuscode::StatusCode};
-
-    use self::resolver::Google;
+    use crate::dns::resolver::DNS_IP_LOCAL;
+    use crate::http::{
+        builder::Builder,
+        header::{HeaderKind, HeaderMap},
+        method::Method,
+        mimetype::MimeType,
+        statuscode::StatusCode,
+    };
 
     use super::*;
 
@@ -65,7 +70,7 @@ mod tests {
             .url("http://httpbin.org/robots.txt")
             .headers(headers)
             .build();
-        let resp = Client::perform::<Google>(request).await.unwrap();
+        let resp = Client::perform(request, DNS_IP_LOCAL).await.unwrap();
         assert_eq!(resp.status, StatusCode::Ok);
     }
 }

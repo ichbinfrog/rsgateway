@@ -36,8 +36,7 @@ impl FromStr for Scheme {
                         _ => {
                             return Err(ParseError::AuthorizationMissingRequiredParam {
                                 subject: "realm",
-                            }
-                            .into())
+                            })
                         }
                     },
                     _ => {}

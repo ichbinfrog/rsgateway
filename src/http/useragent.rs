@@ -19,7 +19,7 @@ impl TryFrom<UserAgent> for String {
 
         res.push_str(&String::try_from(user.version)?);
         if let Some(comment) = &user.comment {
-            res.push_str(&comment);
+            res.push_str(comment);
         }
         Ok(res)
     }

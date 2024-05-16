@@ -1,7 +1,7 @@
 use std::{error::Error, fmt::Debug, str::FromStr};
 
 use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
 
@@ -33,6 +33,27 @@ impl Debug for Response {
 }
 
 impl Response {
+    pub async fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let standard = String::try_from(self.standard)?;
+        let status = String::try_from(self.status)?;
+        let mut res = String::new();
+        res.push_str(&standard);
+        res.push(' ');
+        res.push_str(&status);
+        res.push_str("\r\n");
+        stream.write_all(res.as_bytes()).await?;
+
+        stream
+            .write_all(String::try_from(self.headers)?.as_bytes())
+            .await?;
+        stream.write_all(b"\r\n").await?;
+
+        if let Some(body) = self.body {
+            stream.write_all(&body).await?;
+        }
+        Ok(())
+    }
+
     pub async fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn Error + Send + Sync>> {
         let mut buffer = BufReader::new(stream);
         let mut response: Response = Response {
@@ -92,37 +113,17 @@ impl Response {
             match response.headers.get("content-length") {
                 Ok(value) => match value {
                     HeaderKind::ContentLength(n) => {
-                        let mut body = Vec::new();
-                        body.resize(n, 0u8);
+                        let mut body = vec![0; n];
                         buffer.read_exact(&mut body).await?;
                         response.body = Some(body);
                         return Ok(response);
                     }
                     _ => return Err(ParseError::MissingContentLengthHeader.into()),
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         }
 
         Ok(response)
     }
 }
-//     pub async fn read_body(&mut self) -> Result<usize, Box<dyn Error + Send + Sync>> {
-//         if self.hasbody {
-//             match self.headers.get("content-length") {
-//                 Ok(value) => match value {
-//                     HeaderKind::ContentLength(n) => {
-//                         let mut body = Vec::new();
-//                         body.resize(n, 0u8);
-//                         self.buffer.read_exact(&mut body).await?;
-//                         self.body = Some(body);
-//                         return Ok(n);
-//                     }
-//                     _ => return Err(ParseError::MissingContentLengthHeader.into()),
-//                 },
-//                 Err(e) => return Err(e.into()),
-//             }
-//         }
-//         Ok(0)
-//     }
-// }

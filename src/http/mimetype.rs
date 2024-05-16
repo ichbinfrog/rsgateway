@@ -25,7 +25,7 @@ impl TryFrom<MimeType> for String {
         res.push_str(&m.sub);
 
         if let Some((k, v)) = m.param {
-            res.push_str(";");
+            res.push(';');
             res.push_str(&k);
             res.push('=');
             res.push_str(&v);
@@ -61,14 +61,12 @@ impl FromStr for MimeType {
                         }
                     }
                 }
-                return Ok(mime);
+                Ok(mime)
             }
 
-            _ => {
-                return Err(ParseError::InvalidMimeType {
-                    reason: "invalid mimetype, format should be type/subtype;parameter=value",
-                })
-            }
+            _ => Err(ParseError::InvalidMimeType {
+                reason: "invalid mimetype, format should be type/subtype;parameter=value",
+            }),
         }
     }
 }
@@ -122,7 +120,7 @@ mod tests {
     fn test_mime_type_from_str(#[case] input: &str, #[case] expected: MimeType) {
         let m = MimeType::from_str(input).unwrap();
         assert_eq!(m, expected);
-        assert_eq!(String::try_from(m).unwrap(), input.replace(" ", ""));
+        assert_eq!(String::try_from(m).unwrap(), input.replace(' ', ""));
     }
 
     #[rstest]
