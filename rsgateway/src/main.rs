@@ -1,7 +1,4 @@
-pub mod proxy;
-pub mod route;
-
-use proxy::Proxy;
+use rsgateway::proxy::Proxy;
 
 #[tokio::main]
 async fn main() {

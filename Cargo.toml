@@ -5,5 +5,5 @@ members = [
     "dns",
     "encoding",
     "http",
-    "gateway",
+    "rsgateway",
 ]

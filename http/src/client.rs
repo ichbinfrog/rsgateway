@@ -40,7 +40,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use dns::resolver::DNS_IP_LOCAL;
+    use super::*;
     use crate::{
         builder::Builder,
         header::{HeaderKind, HeaderMap},
@@ -48,8 +48,8 @@ mod tests {
         mimetype::MimeType,
         statuscode::StatusCode,
     };
-
-    use super::*;
+    use dns::resolver::{DNS_IP_GOOGLE, DNS_IP_LOCAL};
+    use rstest::*;
 
     #[tokio::test]
     async fn test_client() {
@@ -72,5 +72,50 @@ mod tests {
             .build();
         let resp = Client::perform(request, DNS_IP_LOCAL).await.unwrap();
         assert_eq!(resp.status, StatusCode::Ok);
+    }
+
+    #[rstest]
+    #[case(
+        "basic-auth/user/correct-password",
+        "user",
+        "correct-password",
+        StatusCode::Ok
+    )]
+    #[case(
+        "basic-auth/user/correct-password",
+        "user",
+        "bad-password",
+        StatusCode::Unauthorized
+    )]
+    #[case(
+        "hidden-basic-auth/user/correct-password",
+        "user",
+        "correct-password",
+        StatusCode::Ok
+    )]
+    #[case(
+        "hidden-basic-auth/user/correct-password",
+        "user",
+        "bad-password",
+        StatusCode::NotFound
+    )]
+    #[tokio::test]
+    async fn test_client_authorization(
+        #[case] endpoint: &str,
+        #[case] user: &str,
+        #[case] password: &str,
+        #[case] expected: StatusCode,
+    ) {
+        let mut url = "http://httpbin.org/".to_string();
+        url.push_str(endpoint);
+
+        let request = Builder::new()
+            .method(Method::GET)
+            .url(&url)
+            .headers(HeaderMap::default())
+            .basic_auth(user, password)
+            .build();
+        let resp = Client::perform(request, DNS_IP_LOCAL).await.unwrap();
+        assert_eq!(resp.status, expected);
     }
 }

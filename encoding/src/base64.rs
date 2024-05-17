@@ -1,7 +1,17 @@
 use crate::error::EncodingError;
 
-pub const STD_ALPHABET: &[char; 64] = &['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'];
-pub const URL_ALPHABET: &[char; 64] = &['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9','-','_'];
+pub const STD_ALPHABET: &[char; 64] = &[
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+    'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+    'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4',
+    '5', '6', '7', '8', '9', '+', '/',
+];
+pub const URL_ALPHABET: &[char; 64] = &[
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+    'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+    'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4',
+    '5', '6', '7', '8', '9', '-', '_',
+];
 
 #[inline]
 fn lookup(index: u8, alphabet: &[char; 64]) -> char {
@@ -17,13 +27,19 @@ fn inverse(ch: char, alphabet: &[char; 64]) -> Result<u8, EncodingError> {
 }
 
 #[inline]
-pub fn decode(input: &str, alphabet: &[char; 64]) -> String {
+pub fn decode(input: &str, alphabet: &[char; 64]) -> Result<String, EncodingError> {
     let mut res = String::with_capacity((input.len() / 4) * 3);
 
     for window in input.trim_end_matches('=').as_bytes().chunks(4) {
         let n = window.len();
-        let indexes: Vec<u8> = window.iter().map(|x| inverse(*x as char, alphabet).unwrap()).collect();
 
+        let mut indexes = Vec::<u8>::new();
+        for w in window {
+            match inverse(*w as char, alphabet) {
+                Ok(v) => indexes.push(v),
+                Err(e) => return Err(e),
+            }
+        }
 
         match n {
             2 => {
@@ -41,7 +57,7 @@ pub fn decode(input: &str, alphabet: &[char; 64]) -> String {
             _ => {}
         }
     }
-    res
+    Ok(res)
 }
 
 #[inline]
@@ -97,17 +113,17 @@ mod tests {
     #[case("Sun", "U3Vu")]
     #[case("Sund", "U3VuZA==")]
     #[case("sure.", "c3VyZS4=")]
-	#[case("sure", "c3VyZQ==")]
-	#[case("sur", "c3Vy")]
-	#[case("su", "c3U=")]
-	#[case("leasure.", "bGVhc3VyZS4=")]
-	#[case("easure.", "ZWFzdXJlLg==")]
-	#[case("asure.", "YXN1cmUu")]
-	#[case("sure.", "c3VyZS4=")]
+    #[case("sure", "c3VyZQ==")]
+    #[case("sur", "c3Vy")]
+    #[case("su", "c3U=")]
+    #[case("leasure.", "bGVhc3VyZS4=")]
+    #[case("easure.", "ZWFzdXJlLg==")]
+    #[case("asure.", "YXN1cmUu")]
+    #[case("sure.", "c3VyZS4=")]
     fn test_std_encoding(#[case] input: &str, #[case] expected: &str) {
         let encoded = encode(input, STD_ALPHABET);
         assert_eq!(encoded, expected.to_string());
-        
-        assert_eq!(decode(&encoded, STD_ALPHABET), input);
+
+        assert_eq!(decode(&encoded, STD_ALPHABET).unwrap(), input);
     }
 }

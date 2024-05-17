@@ -194,7 +194,7 @@ mod tests {
     fn test_query_parsing(#[case] input: &str, #[case] expected: Query) {
         let query = Query::from_str(input).unwrap();
         assert_eq!(query, expected);
-        
+
         let output = String::try_from(query.clone()).unwrap();
         let double = Query::from_str(&output).unwrap();
 

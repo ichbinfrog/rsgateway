@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::auth::authorization::Authorization;
+
 use super::{
     header::{HeaderKind, HeaderMap},
     method::Method,
@@ -31,6 +33,21 @@ impl Builder {
 
     pub fn method(mut self, method: Method) -> Self {
         self.request.parts.method = method;
+        self
+    }
+
+    pub fn basic_auth(mut self, user: &str, password: &str) -> Self {
+        self.request
+            .parts
+            .headers
+            .put(
+                "authorization",
+                HeaderKind::Authorization(Authorization::Basic {
+                    user: user.to_string(),
+                    password: password.to_string(),
+                }),
+            )
+            .unwrap();
         self
     }
 

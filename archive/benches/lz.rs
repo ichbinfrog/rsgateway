@@ -3,8 +3,8 @@ use std::{
     io::{BufWriter, Read},
 };
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use archive::lz77::Buffer;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tempfile::tempfile;
 
 pub fn criterion_benchmark(c: &mut Criterion) {

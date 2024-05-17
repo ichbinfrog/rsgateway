@@ -45,6 +45,7 @@ pub enum ParseError {
     AuthorizationMissingRequiredParam {
         subject: &'static str,
     },
+    AuthorizationBasicInvalidFormat,
 }
 
 impl std::fmt::Display for ParseError {

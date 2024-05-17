@@ -39,7 +39,9 @@ impl TryFrom<Authority> for String {
                 res.push_str(port.to_string().as_str());
                 Ok(res)
             }
-            Authority::Undefined => Err(ParseError::InvalidAuthority { reason: "undefined authority" }),
+            Authority::Undefined => Err(ParseError::InvalidAuthority {
+                reason: "undefined authority",
+            }),
         }
     }
 }
@@ -65,7 +67,8 @@ impl FromStr for Authority {
         if s.starts_with('[') ^ s.ends_with(']') {
             return Err(ParseError::InvalidAuthority {
                 reason: "ipv6 host is missing either closing or opening brackets",
-            }.into())
+            }
+            .into());
         }
 
         if s.starts_with('[') && s.ends_with(']') {
@@ -77,8 +80,8 @@ impl FromStr for Authority {
 
         let split: Vec<&str> = s.split('.').collect();
         if split.len() == 4 {
-            if let Ok(ip) =  Ipv4Addr::from_str(s) {
-                return Ok(Self::IPv4 { ip, port })
+            if let Ok(ip) = Ipv4Addr::from_str(s) {
+                return Ok(Self::IPv4 { ip, port });
             }
         }
 

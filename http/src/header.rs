@@ -1,3 +1,5 @@
+use crate::auth::authorization::{self, Authorization};
+
 use super::{
     error::parse::ParseError,
     method::Method,
@@ -106,6 +108,7 @@ pub enum HeaderKind {
 
     Host(Authority),
     Referer(Url),
+    Authorization(Authorization),
 }
 
 fn try_header_string_from_vec<T>(values: Option<Vec<T>>) -> Result<String, ParseError>
@@ -162,6 +165,9 @@ impl TryFrom<HeaderKind> for String {
             HeaderKind::Referer(url) => {
                 res.push_str(&String::try_from(url)?);
             }
+            HeaderKind::Authorization(authorization) => {
+                res.push_str(&String::try_from(authorization)?);
+            }
         }
 
         Ok(res)
@@ -186,6 +192,7 @@ impl TryFrom<(&str, &str)> for HeaderKind {
             "authority" => Ok(Self::Host(Authority::from_str(v)?)),
             "referer" => Ok(Self::Referer(Url::from_str(v)?)),
             "host" => Ok(Self::Host(Authority::from_str(v)?)),
+            "authorization" => Ok(Self::Authorization(Authorization::from_str(v)?)),
             _ => Err(ParseError::HeaderStructuredGetNotImplemented.into()),
         }
     }
