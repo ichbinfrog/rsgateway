@@ -1,0 +1,13 @@
+[package]
+name = "http"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.37.0", features = ["full"] }
+dns = { path = "../dns" }
+encoding = { path = "../encoding" }
+
+[dev-dependencies]
+rstest = "0.19.0"
+pretty_assertions = "1.4.0"

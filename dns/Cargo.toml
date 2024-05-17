@@ -1,0 +1,14 @@
+[package]
+name = "dns"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+num-traits = "0.2"
+tokio = { version = "1.37.0", features = ["full"] }
+fastrand = "2.1.0"
+
+[dev-dependencies]
+rstest = "0.19.0"
+tempfile = "3"
+pretty_assertions = "1.4.0"

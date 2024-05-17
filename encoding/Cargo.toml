@@ -1,0 +1,16 @@
+[package]
+name = "encoding"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+rstest = "0.19.0"
+criterion = "0.3"
+
+[[bench]]
+name = "base64"
+harness = false
+
+[[bench]]
+name = "percent"
+harness = false

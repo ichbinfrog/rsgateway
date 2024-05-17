@@ -1,1 +1,0 @@
-# Shoutout to https://github.com/EmilHernvall/dnsguide/blob/master/chapter1.md
