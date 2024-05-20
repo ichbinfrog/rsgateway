@@ -191,6 +191,8 @@ mod tests {
             .do_command(Command::Set {
                 key: key.clone(),
                 value: value.clone(),
+                expire_time: None,
+                keep_ttl: false,
             })
             .await
             .unwrap()

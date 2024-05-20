@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::frame::{Frame, FrameError};
 
 #[derive(Debug)]
@@ -9,7 +11,7 @@ pub enum Command {
     Decr { key: String },
 
     Del { keys: Vec<String> },
-    Set { key: String, value: String },
+    Set { key: String, value: String, expire_time: Option<Duration>, keep_ttl: bool },
 }
 
 #[derive(Debug)]
@@ -63,9 +65,16 @@ impl TryFrom<Command> for Frame {
             Command::Get { key } | Command::Incr { key } | Command::Decr { key } => {
                 builder.bulk_string(key);
             }
-            Command::Set { key, value } => {
+            Command::Set { key, value , expire_time, keep_ttl } => {
                 builder.bulk_string(key);
                 builder.bulk_string(value);
+                if let Some(expire_time) = expire_time {
+                    builder.bulk_string("PX");
+                    builder.bulk_string(expire_time.as_millis());
+                }
+                if keep_ttl {
+                    builder.bulk_string("KEEPTTL");
+                }
             }
             Command::Del { keys } => {
                 for k in keys {
