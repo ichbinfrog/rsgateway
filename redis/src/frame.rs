@@ -219,12 +219,11 @@ fn get_u8(cursor: &mut Cursor<&[u8]>) -> Result<u8, FrameError> {
 }
 
 fn get_bool(cursor: &mut Cursor<&[u8]>) -> Result<bool, FrameError> {
-    let res: bool;
-    match get_u8(cursor)? {
-        b't' => res = true,
-        b'f' => res = false,
-        _ => return Err(FrameError::IncompleteFrame.into()),
-    }
+    let res: bool = match get_u8(cursor)? {
+        b't' => true,
+        b'f' => false,
+        _ => return Err(FrameError::IncompleteFrame),
+    };
     cursor.set_position(cursor.position() + 2);
     Ok(res)
 }
@@ -251,7 +250,7 @@ fn get_decimal(cursor: &mut Cursor<&[u8]>) -> Result<i64, FrameError> {
         b'0'..=b'9' => {
             positive = true;
         }
-        _ => return Err(FrameError::IncompleteFrame.into()),
+        _ => return Err(FrameError::IncompleteFrame),
     }
     let res = i64::from_str(&String::from_utf8(line[start..].to_vec())?)?;
     if !positive {

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt::Display, time::Duration};
 
 use crate::frame::{Frame, FrameError};
 
@@ -50,16 +50,16 @@ impl Builder {
     }
 }
 
-impl ToString for Command {
-    fn to_string(&self) -> String {
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Hello { .. } => "HELLO".to_string(),
-            Self::Get { .. } => "GET".to_string(),
-            Self::Incr { .. } => "INCR".to_string(),
-            Self::Decr { .. } => "DECR".to_string(),
+            Self::Hello { .. } => f.write_str("HELLO"),
+            Self::Get { .. } => f.write_str("GET"),
+            Self::Incr { .. } => f.write_str("INCR"),
+            Self::Decr { .. } => f.write_str("DECR"),
 
-            Self::Del { .. } => "DEL".to_string(),
-            Self::Set { .. } => "SET".to_string(),
+            Self::Del { .. } => f.write_str("DEL"),
+            Self::Set { .. } => f.write_str("SET"),
         }
     }
 }

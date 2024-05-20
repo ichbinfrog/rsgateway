@@ -15,7 +15,7 @@ pub const URL_ALPHABET: &[char; 64] = &[
 
 #[inline]
 fn lookup(index: u8, alphabet: &[char; 64]) -> char {
-    alphabet[index as usize] as char
+    alphabet[index as usize]
 }
 
 #[inline]

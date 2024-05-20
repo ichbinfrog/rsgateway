@@ -68,8 +68,7 @@ impl FromStr for Authority {
             return Err(FrameError::Invalid {
                 subject: "authority",
                 reason: "ipv6 host is missing either closing or opening brackets",
-            }
-            .into());
+            });
         }
 
         if s.starts_with('[') && s.ends_with(']') {
