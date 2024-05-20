@@ -1,9 +1,10 @@
 use std::{
-    error::Error,
     net::{Ipv4Addr, Ipv6Addr},
 };
 
 use tokio::net::UdpSocket;
+
+use crate::error::LookupError;
 
 use super::{
     buffer::{Header, PacketBuffer},
@@ -351,7 +352,7 @@ impl Packet {
         &self,
         socket: &mut UdpSocket,
         server: &str,
-    ) -> Result<Packet, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Packet, LookupError> {
         let mut req: PacketBuffer = PacketBuffer::default();
         self.write(&mut req).await?;
         socket.send_to(&req.buf[0..req.pos], (server, 53)).await?;

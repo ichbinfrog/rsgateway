@@ -1,9 +1,8 @@
-use crate::error::parse::ParseError;
+use crate::error::frame::FrameError;
 use crate::header::HeaderKind;
 use crate::method::Method;
-use crate::version::Version;
+use crate::standard::Standard;
 
-use std::error::Error;
 use std::fmt::Debug;
 use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -26,7 +25,7 @@ pub struct Parts {
 }
 
 impl TryFrom<Parts> for String {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from(p: Parts) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -40,52 +39,6 @@ impl TryFrom<Parts> for String {
         res.push_str("\r\n");
 
         Ok(res)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Standard {
-    pub name: String,
-    pub version: Version,
-}
-
-impl Default for Standard {
-    fn default() -> Self {
-        Self {
-            name: "HTTP".to_string(),
-            version: Version {
-                major: 1,
-                minor: Some(1),
-                patch: None,
-            },
-        }
-    }
-}
-
-impl TryFrom<Standard> for String {
-    type Error = ParseError;
-
-    fn try_from(standard: Standard) -> Result<Self, Self::Error> {
-        let mut res = standard.name;
-        res.push('/');
-        res.push_str(&String::try_from(standard.version)?);
-        Ok(res)
-    }
-}
-
-impl FromStr for Standard {
-    type Err = Box<dyn Error + Send + Sync>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let split: Vec<&str> = s.split('/').collect();
-        if split.len() == 2 {
-            let (name, version) = (split[0], split[1]);
-            return Ok(Standard {
-                name: name.to_string(),
-                version: Version::from_str(version)?,
-            });
-        }
-        Err(ParseError::InvalidStandard.into())
     }
 }
 
@@ -126,7 +79,7 @@ impl Default for Request {
 }
 
 impl Request {
-    pub async fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub async fn write(self, stream: &mut TcpStream) -> Result<(), FrameError> {
         let req = String::try_from(self.parts)?;
         stream.write_all(req.as_bytes()).await?;
 
@@ -138,15 +91,12 @@ impl Request {
         Ok(())
     }
 
-    pub async fn call(
-        self,
-        stream: &mut TcpStream,
-    ) -> Result<Response, Box<dyn Error + Send + Sync>> {
+    pub async fn call(self, stream: &mut TcpStream) -> Result<Response, FrameError> {
         self.write(stream).await?;
         Response::parse(stream).await
     }
 
-    pub async fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub async fn parse(stream: &mut TcpStream) -> Result<Self, FrameError> {
         let mut buffer = BufReader::new(stream);
         let mut request = Request::default();
         let mut line = String::with_capacity(MAX_REQUEST_LINE_SIZE);
@@ -213,7 +163,11 @@ impl Request {
                         request.body = Some(body);
                         return Ok(request);
                     }
-                    _ => return Err(ParseError::MissingContentLengthHeader.into()),
+                    _ => {
+                        return Err(FrameError::RequiredParam {
+                            subject: "content-length header is required",
+                        })
+                    }
                 },
                 Err(e) => return Err(e),
             }
@@ -225,7 +179,7 @@ impl Request {
 
 #[cfg(test)]
 mod tests {
-    use crate::uri::authority::Authority;
+    use crate::{uri::authority::Authority, version::Version};
     use crate::uri::path::Path;
     use pretty_assertions::assert_eq;
     use std::collections::HashMap;

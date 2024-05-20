@@ -1,5 +1,7 @@
 use encoding::percent::{self, escape};
-use std::{collections::HashMap, error::Error, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
+
+use crate::error::frame::FrameError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Query {
@@ -16,7 +18,7 @@ pub struct Path {
 }
 
 impl TryFrom<Query> for String {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from(query: Query) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -40,7 +42,7 @@ impl TryFrom<Query> for String {
 }
 
 impl FromStr for Query {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut query = Query {
@@ -77,7 +79,7 @@ impl FromStr for Query {
 }
 
 impl TryFrom<Path> for String {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from(path: Path) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -99,7 +101,7 @@ impl TryFrom<Path> for String {
 }
 
 impl FromStr for Path {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut path = Path {

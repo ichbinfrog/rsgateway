@@ -53,7 +53,6 @@ pub fn unescape(s: &str) -> Result<String, EncodingError> {
     }
 
     Ok(res)
-    // ParseError::MalformedQuery.into()
 }
 
 #[cfg(test)]

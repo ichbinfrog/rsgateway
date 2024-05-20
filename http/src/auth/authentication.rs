@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use crate::error::parse::ParseError;
+use crate::error::auth::AuthenticationError;
 
 #[derive(Debug)]
 pub enum Scheme {
@@ -12,7 +12,7 @@ pub enum Scheme {
 }
 
 impl FromStr for Scheme {
-    type Err = ParseError;
+    type Err = AuthenticationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once(' ') {
@@ -33,11 +33,7 @@ impl FromStr for Scheme {
                                 charset: params.get("charset").cloned(),
                             })
                         }
-                        _ => {
-                            return Err(ParseError::AuthorizationMissingRequiredParam {
-                                subject: "realm",
-                            })
-                        }
+                        _ => return Err(AuthenticationError::RequiredParam { subject: "realm" }),
                     },
                     _ => {}
                 }

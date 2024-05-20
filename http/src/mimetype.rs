@@ -1,4 +1,4 @@
-use crate::error::parse::ParseError;
+use crate::error::frame::FrameError;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -16,7 +16,7 @@ impl MimeType {
 }
 
 impl TryFrom<MimeType> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(m: MimeType) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -36,7 +36,7 @@ impl TryFrom<MimeType> for String {
 }
 
 impl FromStr for MimeType {
-    type Err = ParseError;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once('/') {
@@ -55,7 +55,8 @@ impl FromStr for MimeType {
                             mime.param = Some((k.to_string(), v.to_string()));
                         }
                         _ => {
-                            return Err(ParseError::InvalidMimeType {
+                            return Err(FrameError::Invalid {
+                                subject: "mimetype",
                                 reason: "missing parameter definition",
                             })
                         }
@@ -64,8 +65,9 @@ impl FromStr for MimeType {
                 Ok(mime)
             }
 
-            _ => Err(ParseError::InvalidMimeType {
-                reason: "invalid mimetype, format should be type/subtype;parameter=value",
+            _ => Err(FrameError::Invalid {
+                subject: "mimetype",
+                reason: "format should be type/subtype;parameter=value",
             }),
         }
     }

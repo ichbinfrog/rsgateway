@@ -1,10 +1,9 @@
 use std::{
-    error::Error,
     net::{Ipv4Addr, Ipv6Addr},
     str::FromStr,
 };
 
-use crate::error::parse::ParseError;
+use crate::error::frame::FrameError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Authority {
@@ -15,7 +14,7 @@ pub enum Authority {
 }
 
 impl TryFrom<Authority> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(value: Authority) -> Result<Self, Self::Error> {
         match value {
@@ -39,7 +38,8 @@ impl TryFrom<Authority> for String {
                 res.push_str(port.to_string().as_str());
                 Ok(res)
             }
-            Authority::Undefined => Err(ParseError::InvalidAuthority {
+            Authority::Undefined => Err(FrameError::Invalid {
+                subject: "authority",
                 reason: "undefined authority",
             }),
         }
@@ -47,7 +47,7 @@ impl TryFrom<Authority> for String {
 }
 
 impl FromStr for Authority {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut s = input;
@@ -65,7 +65,8 @@ impl FromStr for Authority {
 
         // '[' => false, ']' => false, '[]' => true, '' => true
         if s.starts_with('[') ^ s.ends_with(']') {
-            return Err(ParseError::InvalidAuthority {
+            return Err(FrameError::Invalid {
+                subject: "authority",
                 reason: "ipv6 host is missing either closing or opening brackets",
             }
             .into());

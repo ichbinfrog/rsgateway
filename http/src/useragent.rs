@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::{error::parse::ParseError, version::Version};
+use super::{error::frame::FrameError, version::Version};
 
 #[derive(Debug, PartialEq)]
 pub struct UserAgent {
@@ -10,7 +10,7 @@ pub struct UserAgent {
 }
 
 impl TryFrom<UserAgent> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(user: UserAgent) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -26,7 +26,7 @@ impl TryFrom<UserAgent> for String {
 }
 
 impl FromStr for UserAgent {
-    type Err = ParseError;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut user = UserAgent {
@@ -47,15 +47,7 @@ impl FromStr for UserAgent {
 
         if let Some((name, version)) = product.split_once('/') {
             user.product = name.to_string();
-
-            match Version::from_str(version) {
-                Ok(v) => user.version = v,
-                Err(e) => {
-                    return Err(ParseError::InvalidUserAgent {
-                        reason: e.to_string(),
-                    })
-                }
-            }
+            user.version = Version::from_str(version)?;
         }
 
         Ok(user)

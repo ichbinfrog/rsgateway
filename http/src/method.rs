@@ -1,4 +1,4 @@
-use crate::error::parse::ParseError;
+use crate::error::frame::FrameError;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -16,7 +16,7 @@ pub enum Method {
 }
 
 impl FromStr for Method {
-    type Err = ParseError;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -28,13 +28,15 @@ impl FromStr for Method {
             "CONNECT" => Ok(Method::CONNECT),
             "OPTIONS" => Ok(Method::OPTIONS),
             "TRACE" => Ok(Method::TRACE),
-            _ => Err(ParseError::InvalidMethod),
+            x => Err(FrameError::NotImplemented {
+                subject: format!("method not implemented for {}", x),
+            }),
         }
     }
 }
 
 impl TryFrom<Method> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(method: Method) -> Result<Self, Self::Error> {
         match method {
@@ -46,7 +48,9 @@ impl TryFrom<Method> for String {
             Method::CONNECT => Ok("CONNECT".to_string()),
             Method::OPTIONS => Ok("OPTIONS".to_string()),
             Method::TRACE => Ok("TRACE".to_string()),
-            _ => Err(ParseError::InvalidMethod),
+            Method::UNDEFINED => Err(FrameError::NotImplemented {
+                subject: "method not implemented for Method::UNDEFINED".to_string(),
+            }),
         }
     }
 }

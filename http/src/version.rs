@@ -1,5 +1,6 @@
-use crate::error::parse::ParseError;
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
+
+use crate::error::frame::FrameError;
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Version {
@@ -9,7 +10,7 @@ pub struct Version {
 }
 
 impl TryFrom<Version> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(version: Version) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -28,40 +29,40 @@ impl TryFrom<Version> for String {
     }
 }
 impl FromStr for Version {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let split_version: Vec<&str> = s.split('.').collect();
         match split_version.len() {
-            1 => {
-                return Ok(Version {
-                    major: str::parse(split_version[0])?,
-                    minor: None,
-                    patch: None,
-                })
-            }
+            1 => Ok(Version {
+                major: str::parse(split_version[0])?,
+                minor: None,
+                patch: None,
+            }),
             2 => {
                 let (major_raw, minor_raw) = (split_version[0], split_version[1]);
 
-                return Ok(Version {
+                Ok(Version {
                     major: str::parse(major_raw)?,
                     minor: Some(str::parse(minor_raw)?),
                     patch: None,
-                });
+                })
             }
             3 => {
                 let (major_raw, minor_raw, patch_raw) =
                     (split_version[0], split_version[1], split_version[2]);
 
-                return Ok(Version {
+                Ok(Version {
                     major: str::parse(major_raw)?,
                     minor: Some(str::parse(minor_raw)?),
                     patch: Some(str::parse(patch_raw)?),
-                });
+                })
             }
-            _ => {}
+            _ => Err(FrameError::Invalid {
+                subject: "version",
+                reason: "format should be <major>.<minor>.<patch>",
+            }),
         }
-        Err(ParseError::MalformedStandardVersion.into())
     }
 }
 

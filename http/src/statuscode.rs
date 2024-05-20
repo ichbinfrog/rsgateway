@@ -1,6 +1,6 @@
-use std::{error::Error, fmt::Debug, str::FromStr};
+use std::{fmt::Debug, str::FromStr};
 
-use super::error::parse::ParseError;
+use super::error::frame::FrameError;
 
 #[derive(Debug, PartialEq)]
 pub enum StatusCode {
@@ -74,7 +74,7 @@ pub enum StatusCode {
 }
 
 impl TryFrom<StatusCode> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(s: StatusCode) -> Result<Self, Self::Error> {
         let num = match s {
@@ -150,7 +150,7 @@ impl TryFrom<StatusCode> for String {
 }
 
 impl FromStr for StatusCode {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let u: usize = str::parse(s)?;
@@ -222,7 +222,9 @@ impl FromStr for StatusCode {
             508 => Ok(StatusCode::LoopDetected),
             510 => Ok(StatusCode::NotExtended),
             511 => Ok(StatusCode::NetworkAuthenticationRequired),
-            _ => Err(ParseError::UnknownStatusCode.into()),
+            x => Err(FrameError::NotImplemented {
+                subject: format!("status_code not implemented for {}", x),
+            }),
         }
     }
 }

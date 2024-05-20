@@ -1,14 +1,15 @@
-use std::{error::Error, fmt::Debug, str::FromStr};
+use std::{fmt::Debug, str::FromStr};
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
 
+use crate::standard::Standard;
+
 use super::{
-    error::parse::ParseError,
+    error::frame::FrameError,
     header::{HeaderKind, HeaderMap},
-    request::Standard,
     statuscode::StatusCode,
 };
 const MAX_RESPONSE_LINE_SIZE: usize = 8096 * 4;
@@ -33,7 +34,7 @@ impl Debug for Response {
 }
 
 impl Response {
-    pub async fn write(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub async fn write(self, stream: &mut TcpStream) -> Result<(), FrameError> {
         let standard = String::try_from(self.standard)?;
         let status = String::try_from(self.status)?;
         let mut res = String::new();
@@ -54,7 +55,7 @@ impl Response {
         Ok(())
     }
 
-    pub async fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub async fn parse(stream: &mut TcpStream) -> Result<Self, FrameError> {
         let mut buffer = BufReader::new(stream);
         let mut response: Response = Response {
             status: StatusCode::Accepted,
@@ -118,7 +119,11 @@ impl Response {
                         response.body = Some(body);
                         return Ok(response);
                     }
-                    _ => return Err(ParseError::MissingContentLengthHeader.into()),
+                    _ => {
+                        return Err(FrameError::RequiredParam {
+                            subject: "content-length header is required",
+                        })
+                    }
                 },
                 Err(e) => return Err(e),
             }

@@ -1,19 +1,16 @@
-use std::{error::Error, net::Ipv4Addr};
+use std::{net::Ipv4Addr};
 
 use tokio::net::TcpStream;
 
 use super::{
-    error::parse::ParseError, request::Request, response::Response, uri::authority::Authority,
+    error::frame::FrameError, request::Request, response::Response, uri::authority::Authority,
 };
 use dns::resolver::Resolver;
 
 pub struct Client {}
 
 impl Client {
-    pub async fn perform(
-        request: Request,
-        dns_ip: &[Ipv4Addr],
-    ) -> Result<Response, Box<dyn Error + Send + Sync>> {
+    pub async fn perform(request: Request, dns_ip: &[Ipv4Addr]) -> Result<Response, FrameError> {
         let mut stream: TcpStream;
         let resolver = Resolver::new();
 
@@ -30,7 +27,10 @@ impl Client {
                 stream = TcpStream::connect((ip, port as u16)).await?;
             }
             _ => {
-                return Err(ParseError::InvalidURI.into());
+                return Err(FrameError::Invalid {
+                    reason: "unable to resolve authority",
+                    subject: "authority",
+                });
             }
         }
 

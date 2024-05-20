@@ -3,7 +3,6 @@ use std::{error::Error, num::IntErrorKind};
 #[derive(Debug, PartialEq)]
 pub enum EncodingError {
     Base64UnknownCharacter { character: char },
-
     PercentHexInvalidStringLength { index: usize },
     PercentInvalidInteger { index: usize, kind: IntErrorKind },
 }

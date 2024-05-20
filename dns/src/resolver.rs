@@ -5,10 +5,8 @@ use super::{
     packet::{Packet, Record},
     question::{Question, QuestionClass, QuestionKind},
 };
-use std::{
-    error::Error,
-    net::{Ipv4Addr, Ipv6Addr},
-};
+use crate::error::LookupError;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 pub const DNS_IP_LOCAL: &[Ipv4Addr] = &[Ipv4Addr::new(192, 168, 1, 254)];
 pub const DNS_IP_CLOUDFLARE: &[Ipv4Addr] = &[Ipv4Addr::new(1, 1, 1, 1)];
@@ -26,7 +24,7 @@ impl Resolver {
         domain: &str,
         qtype: QuestionKind,
         resolver: &[Ipv4Addr],
-    ) -> Result<Packet, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Packet, LookupError> {
         let packet = Packet {
             header: Header {
                 id: 30000,
@@ -53,7 +51,7 @@ impl Resolver {
         self,
         domain: &str,
         resolver: &[Ipv4Addr],
-    ) -> Result<Vec<Ipv4Addr>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<Ipv4Addr>, LookupError> {
         let packet = self.lookup(domain, QuestionKind::A, resolver).await?;
         Ok(packet
             .answers
@@ -70,7 +68,7 @@ impl Resolver {
         self,
         domain: &str,
         resolver: &[Ipv4Addr],
-    ) -> Result<Vec<Ipv6Addr>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<Ipv6Addr>, LookupError> {
         let packet = self.lookup(domain, QuestionKind::A, resolver).await?;
         Ok(packet
             .answers
@@ -87,7 +85,7 @@ impl Resolver {
         self,
         domain: &str,
         resolver: &[Ipv4Addr],
-    ) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<String>, LookupError> {
         let packet = self.lookup(domain, QuestionKind::A, resolver).await?;
         Ok(packet
             .answers
@@ -104,7 +102,7 @@ impl Resolver {
         self,
         domain: &str,
         resolver: &[Ipv4Addr],
-    ) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<String>, LookupError> {
         let packet = self.lookup(domain, QuestionKind::A, resolver).await?;
         Ok(packet
             .authorities

@@ -1,15 +1,13 @@
 use crate::auth::authorization::Authorization;
 
 use super::{
-    error::parse::ParseError,
+    error::frame::FrameError,
     method::Method,
     mimetype::MimeType,
     uri::{authority::Authority, url::Url},
     useragent::UserAgent,
 };
-use std::{
-    collections::HashMap, convert::Infallible, error::Error, ops::FromResidual, str::FromStr,
-};
+use std::{collections::HashMap, convert::Infallible, ops::FromResidual, str::FromStr};
 
 pub const MAX_HEADER_SIZE: usize = 8190;
 pub const MAX_HEADER_MAP_SIZE: usize = MAX_HEADER_SIZE * 128 * 2;
@@ -36,7 +34,7 @@ impl Default for HeaderMap {
 }
 
 impl TryFrom<HeaderMap> for String {
-    type Error = ParseError;
+    type Error = FrameError;
 
     fn try_from(headers: HeaderMap) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -53,22 +51,22 @@ impl TryFrom<HeaderMap> for String {
 }
 
 impl HeaderMap {
-    pub fn parse(&mut self, s: &str) -> Result<(), ParseError> {
+    pub fn parse(&mut self, s: &str) -> Result<(), FrameError> {
         if let Some((k, v)) = s.split_once(':') {
             if k.len() > self.max_header_size {
-                return Err(ParseError::ContentTooLarge {
+                return Err(FrameError::ContentTooLarge {
                     subject: "header_key".to_string(),
                 });
             }
 
             if v.len() > self.max_header_size {
-                return Err(ParseError::ContentTooLarge {
+                return Err(FrameError::ContentTooLarge {
                     subject: "header_value".to_string(),
                 });
             }
 
             if self.size + v.len() + k.len() >= self.max_total_length {
-                return Err(ParseError::ContentTooLarge {
+                return Err(FrameError::ContentTooLarge {
                     subject: "header_map".to_string(),
                 });
             }
@@ -82,15 +80,15 @@ impl HeaderMap {
         Ok(())
     }
 
-    pub fn get(&self, k: &str) -> Result<HeaderKind, Box<dyn Error + Send + Sync>> {
+    pub fn get(&self, k: &str) -> Result<HeaderKind, FrameError> {
         let lk = k.to_lowercase();
         match self.raw.get(&lk) {
             Some(v) => Ok(HeaderKind::try_from((lk.as_str(), v.as_str()))?),
-            None => Err(ParseError::HeaderNotFound.into()),
+            None => Err(FrameError::HeaderNotFound),
         }
     }
 
-    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub fn put(&mut self, k: &str, v: HeaderKind) -> Result<(), FrameError> {
         self.raw.insert(k.to_string(), String::try_from(v)?);
         Ok(())
     }
@@ -111,11 +109,11 @@ pub enum HeaderKind {
     Authorization(Authorization),
 }
 
-fn try_header_string_from_vec<T>(values: Option<Vec<T>>) -> Result<String, ParseError>
+fn try_header_string_from_vec<T>(values: Option<Vec<T>>) -> Result<String, FrameError>
 where
     String: TryFrom<T>,
-    <String as TryFrom<T>>::Error: Into<ParseError>,
-    Result<String, ParseError>: FromResidual<Result<Infallible, <String as TryFrom<T>>::Error>>,
+    <String as TryFrom<T>>::Error: Into<FrameError>,
+    Result<String, FrameError>: FromResidual<Result<Infallible, <String as TryFrom<T>>::Error>>,
 {
     let mut res: String = String::new();
     if let Some(values) = values {
@@ -140,7 +138,7 @@ where
 }
 
 impl TryFrom<HeaderKind> for String {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from(header: HeaderKind) -> Result<Self, Self::Error> {
         let mut res: String = String::new();
@@ -175,7 +173,7 @@ impl TryFrom<HeaderKind> for String {
 }
 
 impl TryFrom<(&str, &str)> for HeaderKind {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from((k, v): (&str, &str)) -> Result<Self, Self::Error> {
         match k {
@@ -193,7 +191,9 @@ impl TryFrom<(&str, &str)> for HeaderKind {
             "referer" => Ok(Self::Referer(Url::from_str(v)?)),
             "host" => Ok(Self::Host(Authority::from_str(v)?)),
             "authorization" => Ok(Self::Authorization(Authorization::from_str(v)?)),
-            _ => Err(ParseError::HeaderStructuredGetNotImplemented.into()),
+            x => Err(FrameError::NotImplemented {
+                subject: format!("get_structured_header not implemented for {}", x),
+            }),
         }
     }
 }

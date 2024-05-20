@@ -1,9 +1,14 @@
 [workspace]
 
 members = [
-    "archive", "cache",
+    "archive",
+    "cache",
     "dns",
     "encoding",
-    "http", "redis",
+    "http", 
+    "protobuf", 
+    "redis",
     "rsgateway",
 ]
+
+resolver = "2"

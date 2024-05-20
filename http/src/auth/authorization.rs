@@ -1,8 +1,8 @@
-use std::{error::Error, str::FromStr};
+use std::{str::FromStr};
 
 use encoding::base64::{self, STD_ALPHABET};
 
-use super::error::AuthorizationError;
+use crate::error::auth::AuthorizationError;
 
 #[derive(Debug, PartialEq)]
 pub enum Authorization {
@@ -10,7 +10,7 @@ pub enum Authorization {
 }
 
 impl FromStr for Authorization {
-    type Err = Box<dyn Error + Sync + Send>;
+    type Err = AuthorizationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once(' ') {
@@ -24,7 +24,11 @@ impl FromStr for Authorization {
                                 password: password.to_string(),
                             })
                         }
-                        None => return Err(AuthorizationError::BasicInvalidFormat.into()),
+                        None => {
+                            return Err(AuthorizationError::InvalidFormat {
+                                reason: "missing ':' separator between user and password",
+                            })
+                        }
                     }
                 }
                 _ => {}
@@ -37,7 +41,7 @@ impl FromStr for Authorization {
 }
 
 impl TryFrom<Authorization> for String {
-    type Error = Box<dyn Error + Sync + Send>;
+    type Error = AuthorizationError;
 
     fn try_from(auth: Authorization) -> Result<Self, Self::Error> {
         let mut res = String::new();

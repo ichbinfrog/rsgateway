@@ -1,6 +1,6 @@
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
 
-use crate::uri::path::Path;
+use crate::{error::frame::FrameError, uri::path::Path};
 
 use super::authority::Authority;
 
@@ -26,7 +26,7 @@ impl Default for Url {
 }
 
 impl TryFrom<Url> for String {
-    type Error = Box<dyn Error + Send + Sync>;
+    type Error = FrameError;
 
     fn try_from(url: Url) -> Result<Self, Self::Error> {
         let mut res = String::new();
@@ -40,7 +40,7 @@ impl TryFrom<Url> for String {
 }
 
 impl FromStr for Url {
-    type Err = Box<dyn Error + Send + Sync>;
+    type Err = FrameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut url = Url::default();
