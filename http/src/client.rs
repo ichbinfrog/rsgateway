@@ -41,34 +41,16 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        builder::Builder,
-        header::{HeaderKind, HeaderMap},
-        method::Method,
-        mimetype::MimeType,
-        statuscode::StatusCode,
-    };
-    use dns::resolver::{DNS_IP_GOOGLE, DNS_IP_LOCAL};
+    use crate::{builder::Builder, header::HeaderMap, method::Method, statuscode::StatusCode};
+    use dns::resolver::DNS_IP_LOCAL;
     use rstest::*;
 
     #[tokio::test]
     async fn test_client() {
-        let mut headers = HeaderMap::default();
-        headers
-            .put(
-                "accept",
-                HeaderKind::Accept(Some(vec![MimeType {
-                    kind: "*".to_string(),
-                    sub: "*".to_string(),
-                    param: None,
-                }])),
-            )
-            .unwrap();
-
         let request = Builder::new()
             .method(Method::GET)
             .url("http://httpbin.org/robots.txt")
-            .headers(headers)
+            .headers(HeaderMap::default())
             .build();
         let resp = Client::perform(request, DNS_IP_LOCAL).await.unwrap();
         assert_eq!(resp.status, StatusCode::Ok);
