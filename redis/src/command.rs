@@ -3,41 +3,78 @@ use crate::frame::{Frame, FrameError};
 #[derive(Debug)]
 pub enum Command {
     Hello { protover: Option<usize> },
+
     Get { key: String },
+    Incr { key: String },
+    Decr { key: String },
+
     Del { keys: Vec<String> },
     Set { key: String, value: String },
+}
+
+#[derive(Debug)]
+pub struct Builder {
+    frames: Vec<Frame>,
+}
+
+impl Builder {
+    pub fn new() -> Self {
+        Self { frames: Vec::new() }
+    }
+    pub fn bulk_string<T>(&mut self, value: T)
+    where
+        T: ToString,
+    {
+        self.frames.push(Frame::BulkString(Some(value.to_string())));
+    }
+
+    pub fn build(self) -> Frame {
+        Frame::Array(self.frames)
+    }
+}
+
+impl ToString for Command {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Hello { .. } => "HELLO".to_string(),
+            Self::Get { .. } => "GET".to_string(),
+            Self::Incr { .. } => "INCR".to_string(),
+            Self::Decr { .. } => "DECR".to_string(),
+
+            Self::Del { .. } => "DEL".to_string(),
+            Self::Set { .. } => "SET".to_string(),
+        }
+    }
 }
 
 impl TryFrom<Command> for Frame {
     type Error = FrameError;
 
     fn try_from(cmd: Command) -> Result<Self, Self::Error> {
+        let mut builder = Builder::new();
+        builder.bulk_string(cmd.to_string());
+
         match cmd {
             Command::Hello { protover } => {
-                let mut frames = vec![Frame::BulkString(Some("HELLO".to_string()))];
                 if let Some(protover) = protover {
-                    frames.push(Frame::BulkString(Some(protover.to_string())));
+                    builder.bulk_string(protover);
                 }
-                Ok(Frame::Array(frames))
             }
-            Command::Get { key } => Ok(Frame::Array(vec![
-                Frame::BulkString(Some("GET".to_string())),
-                Frame::BulkString(Some(key)),
-            ])),
-            Command::Set { key, value } => Ok(Frame::Array(vec![
-                Frame::BulkString(Some("SET".to_string())),
-                Frame::BulkString(Some(key)),
-                Frame::BulkString(Some(value)),
-            ])),
+            Command::Get { key } | Command::Incr { key } | Command::Decr { key } => {
+                builder.bulk_string(key);
+            }
+            Command::Set { key, value } => {
+                builder.bulk_string(key);
+                builder.bulk_string(value);
+            }
             Command::Del { keys } => {
-                let mut frames = Vec::<Frame>::with_capacity(keys.len() + 1);
-                frames.push(Frame::BulkString(Some("DEL".to_string())));
                 for k in keys {
-                    frames.push(Frame::BulkString(Some(k)));
+                    builder.bulk_string(k);
                 }
-                Ok(Frame::Array(frames))
             }
         }
+
+        Ok(builder.build())
     }
 }
 
@@ -46,7 +83,7 @@ pub enum Response {}
 
 #[cfg(test)]
 mod tests {
-    
+
     use rstest::*;
 
     #[rstest]

@@ -4,7 +4,7 @@ use std::{
     hash::Hash,
     io::{BufRead, Cursor},
     num::{ParseFloatError, ParseIntError},
-    str::{FromStr},
+    str::FromStr,
     string::FromUtf8Error,
 };
 
@@ -297,9 +297,8 @@ pub mod tests {
     use std::vec;
 
     use super::*;
-    
+
     use rstest::*;
-    
 
     #[rstest]
     #[case(

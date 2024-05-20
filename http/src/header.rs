@@ -1,4 +1,4 @@
-use crate::auth::authorization::{Authorization};
+use crate::auth::authorization::Authorization;
 
 use super::{
     error::parse::ParseError,
