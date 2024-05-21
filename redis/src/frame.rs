@@ -16,6 +16,7 @@ pub enum FrameError {
     ParseIntError(ParseIntError),
     ParseFloatError(ParseFloatError),
     UTF8ConversionError(FromUtf8Error),
+    ConnectionError,
 }
 
 impl fmt::Display for FrameError {
@@ -26,6 +27,7 @@ impl fmt::Display for FrameError {
             FrameError::ParseIntError(e) => e.fmt(fmt),
             FrameError::ParseFloatError(e) => e.fmt(fmt),
             FrameError::UTF8ConversionError(e) => e.fmt(fmt),
+            FrameError::ConnectionError => "connection reset by peer".fmt(fmt),
         }
     }
 }

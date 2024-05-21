@@ -11,6 +11,14 @@ pub struct Url {
     pub path: Path,
 }
 
+impl Url {
+    pub fn host(&self) -> Result<String, FrameError> {
+        let mut res: String = String::try_from(self.authority.clone())?;
+        res.push_str(&String::try_from(self.path.clone())?);
+        Ok(res)
+    }
+}
+
 impl Default for Url {
     fn default() -> Self {
         Self {

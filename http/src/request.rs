@@ -155,21 +155,18 @@ impl Request {
         }
 
         if request.hasbody {
-            match request.parts.headers.get("content-length") {
-                Ok(value) => match value {
-                    HeaderKind::ContentLength(n) => {
-                        let mut body = vec![0u8; n];
-                        buffer.read_exact(&mut body).await?;
-                        request.body = Some(body);
-                        return Ok(request);
-                    }
-                    _ => {
-                        return Err(FrameError::RequiredParam {
-                            subject: "content-length header is required",
-                        })
-                    }
-                },
-                Err(e) => return Err(e),
+            match request.parts.headers.get("content-length")? {
+                HeaderKind::ContentLength(n) => {
+                    let mut body = vec![0u8; n];
+                    buffer.read_exact(&mut body).await?;
+                    request.body = Some(body);
+                    return Ok(request);
+                }
+                _ => {
+                    return Err(FrameError::RequiredParam {
+                        subject: "content-length header is required",
+                    })
+                }
             }
         }
 
@@ -179,8 +176,8 @@ impl Request {
 
 #[cfg(test)]
 mod tests {
-    use crate::{uri::authority::Authority, version::Version};
     use crate::uri::path::Path;
+    use crate::{uri::authority::Authority, version::Version};
     use pretty_assertions::assert_eq;
     use std::collections::HashMap;
     use tokio::net::{TcpListener, TcpStream};
@@ -274,6 +271,6 @@ mod tests {
             hasbody: false,
         };
 
-        let resp = req.call(&mut stream).await.unwrap();
+        let _ = req.call(&mut stream).await.unwrap();
     }
 }

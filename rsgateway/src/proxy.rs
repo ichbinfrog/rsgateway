@@ -1,7 +1,20 @@
+use std::str::FromStr;
+
 use tokio::net::TcpListener;
 
 use dns::resolver::DNS_IP_GOOGLE;
-use http::{builder::Builder, client::Client, method::Method, request::Request};
+use http::{
+    builder::Builder,
+    client::Client,
+    method::Method,
+    request::Request,
+    uri::{url::Url},
+};
+
+use crate::{
+    route::{MatchType, Route},
+    trie::Trie,
+};
 
 pub struct Proxy {
     listener: TcpListener,
@@ -15,31 +28,39 @@ impl Proxy {
     }
 
     pub async fn run(&self) {
-        loop {
-            let (mut stream, _) = self.listener.accept().await.unwrap();
-            tokio::spawn(async move {
-                let req = Request::parse(&mut stream).await.unwrap();
+        let mut trie = Trie::new();
+        trie.insert(
+            "localhost:9090/status",
+            Some(Route {
+                url: Url::from_str("http://httpbin.org:80/").unwrap(),
+            }),
+        );
 
-                let mut url = "http://httpbin.org".to_string();
-                url.push_str(&String::try_from(req.parts.url.path.clone()).unwrap());
-                let mut headers = req.parts.headers.clone();
-                headers
-                    .raw
-                    .insert("host".to_string(), "httpbin.org".to_string());
+        while let Ok((mut inbound, _)) = self.listener.accept().await {
+            let req = Request::parse(&mut inbound).await.unwrap();
 
-                let proxied_request = Builder::new()
-                    .method(Method::POST)
-                    .url(&url)
-                    .headers(headers)
-                    .body(req.body)
-                    .build();
+            let host = req.parts.url.host().unwrap();
+            match trie.get(&host, MatchType::Prefix) {
+                None => println!("request did not match any routes {:?}", host),
+                Some(upstream) => {
+                    tokio::spawn(async move {
+                        let proxied_request = Builder::new()
+                            .method(Method::POST)
+                            .headers(req.parts.headers)
+                            .url(upstream.url)
+                            .path(req.parts.url.path)
+                            .body(req.body)
+                            .build();
+                        println!("{:?}", proxied_request);
 
-                let resp = Client::perform(proxied_request, DNS_IP_GOOGLE)
-                    .await
-                    .unwrap();
+                        let resp = Client::perform(proxied_request, DNS_IP_GOOGLE)
+                            .await
+                            .unwrap();
 
-                resp.write(&mut stream).await.unwrap();
-            });
+                        resp.write(&mut inbound).await.unwrap();
+                    });
+                }
+            }
         }
     }
 }

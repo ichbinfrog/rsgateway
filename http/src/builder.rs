@@ -1,6 +1,5 @@
-use std::str::FromStr;
 
-use crate::auth::authorization::Authorization;
+use crate::{auth::authorization::Authorization, uri::path::Path};
 
 use super::{
     header::{HeaderKind, HeaderMap},
@@ -19,16 +18,6 @@ impl Builder {
         Self {
             request: Request::default(),
         }
-    }
-
-    fn update_url(&mut self, url: &str) {
-        let url = Url::from_str(url).unwrap();
-        self.request.parts.url = url.clone();
-        let _ = self
-            .request
-            .parts
-            .headers
-            .put("host", HeaderKind::Host(url.authority));
     }
 
     pub fn method(mut self, method: Method) -> Self {
@@ -51,8 +40,18 @@ impl Builder {
         self
     }
 
-    pub fn url(mut self, url: &str) -> Self {
-        self.update_url(url);
+    pub fn url(mut self, url: Url) -> Self {
+        self.request.parts.url = url.clone();
+        let _ = self
+            .request
+            .parts
+            .headers
+            .put("host", HeaderKind::Host(url.authority));
+        self
+    }
+
+    pub fn path(mut self, path: Path) -> Self {
+        self.request.parts.url.path = path;
         self
     }
 

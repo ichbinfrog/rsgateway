@@ -1,4 +1,4 @@
-use std::{str::FromStr};
+use std::str::FromStr;
 
 use encoding::base64::{self, STD_ALPHABET};
 
@@ -36,7 +36,7 @@ impl FromStr for Authorization {
             _ => {}
         }
 
-        Err(AuthorizationError::UnknownScheme.into())
+        Err(AuthorizationError::UnknownScheme)
     }
 }
 
@@ -48,7 +48,7 @@ impl TryFrom<Authorization> for String {
         match auth {
             Authorization::Basic { user, password } => {
                 res.push_str("Basic ");
-                let encoded = base64::encode(&vec![user, password].join(":"), STD_ALPHABET);
+                let encoded = base64::encode(&[user, password].join(":"), STD_ALPHABET);
                 res.push_str(&encoded);
                 Ok(res)
             }

@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use std::{error::Error, io::Cursor};
+use std::io::Cursor;
 
 use bytes::{Buf, BytesMut};
 use tokio::{
@@ -25,12 +25,12 @@ impl Client {
         }
     }
 
-    pub async fn do_command(&mut self, command: Command) -> Result<Option<Frame>, Box<dyn Error>> {
+    pub async fn do_command(&mut self, command: Command) -> Result<Option<Frame>, FrameError> {
         self.write_frame(&Frame::try_from(command)?).await?;
         self.read_frame().await
     }
 
-    pub async fn read_frame(&mut self) -> Result<Option<Frame>, Box<dyn Error>> {
+    pub async fn read_frame(&mut self) -> Result<Option<Frame>, FrameError> {
         loop {
             if let Some(frame) = self.parse_frame()? {
                 return Ok(Some(frame));
@@ -40,13 +40,13 @@ impl Client {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err("connection reset by peer".into());
+                    return Err(FrameError::ConnectionError);
                 }
             }
         }
     }
 
-    pub fn parse_frame(&mut self) -> Result<Option<Frame>, Box<dyn Error>> {
+    pub fn parse_frame(&mut self) -> Result<Option<Frame>, FrameError> {
         let mut buffer = Cursor::new(&self.buffer[..]);
 
         match Frame::parse(&mut buffer) {
@@ -61,7 +61,7 @@ impl Client {
     }
 
     #[async_recursion]
-    pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), Box<dyn Error>> {
+    pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), FrameError> {
         match frame {
             Frame::Null => {
                 self.stream.write_all(b"_\r\n").await?;

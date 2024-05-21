@@ -1,4 +1,4 @@
-use std::{net::Ipv4Addr};
+use std::net::Ipv4Addr;
 
 use tokio::net::TcpStream;
 
@@ -40,8 +40,12 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
-    use crate::{builder::Builder, header::HeaderMap, method::Method, statuscode::StatusCode};
+    use crate::{
+        builder::Builder, header::HeaderMap, method::Method, statuscode::StatusCode, uri::url::Url,
+    };
     use dns::resolver::DNS_IP_LOCAL;
     use rstest::*;
 
@@ -49,7 +53,7 @@ mod tests {
     async fn test_client() {
         let request = Builder::new()
             .method(Method::GET)
-            .url("http://httpbin.org/robots.txt")
+            .url(Url::from_str("http://httpbin.org/robots.txt").unwrap())
             .headers(HeaderMap::default())
             .build();
         let resp = Client::perform(request, DNS_IP_LOCAL).await.unwrap();
@@ -90,10 +94,11 @@ mod tests {
     ) {
         let mut url = "http://httpbin.org/".to_string();
         url.push_str(endpoint);
+        let url = Url::from_str(&url).unwrap();
 
         let request = Builder::new()
             .method(Method::GET)
-            .url(&url)
+            .url(url)
             .headers(HeaderMap::default())
             .basic_auth(user, password)
             .build();

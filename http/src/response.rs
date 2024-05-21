@@ -5,7 +5,7 @@ use tokio::{
     net::TcpStream,
 };
 
-use crate::standard::Standard;
+use crate::{standard::Standard};
 
 use super::{
     error::frame::FrameError,
@@ -110,22 +110,12 @@ impl Response {
             }
         }
 
-        if response.hasbody {
-            match response.headers.get("content-length") {
-                Ok(value) => match value {
-                    HeaderKind::ContentLength(n) => {
-                        let mut body = vec![0; n];
-                        buffer.read_exact(&mut body).await?;
-                        response.body = Some(body);
-                        return Ok(response);
-                    }
-                    _ => {
-                        return Err(FrameError::RequiredParam {
-                            subject: "content-length header is required",
-                        })
-                    }
-                },
-                Err(e) => return Err(e),
+        if response.hasbody && response.status != StatusCode::NoContent {
+            if let HeaderKind::ContentLength(n) = response.headers.get("content-length")? {
+                let mut body = vec![0; n];
+                buffer.read_exact(&mut body).await?;
+                response.body = Some(body);
+                return Ok(response);
             }
         }
 
