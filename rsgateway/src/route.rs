@@ -1,11 +1,11 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use http::{
     error::frame::FrameError,
     uri::{authority::Authority, url::Url},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MatchType {
     Exact,
     Prefix,
@@ -14,6 +14,7 @@ pub enum MatchType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Route {
     pub url: Url,
+    pub match_type: MatchType,
 }
 
 impl TryFrom<Route> for String {
@@ -21,9 +22,4 @@ impl TryFrom<Route> for String {
     fn try_from(route: Route) -> Result<Self, Self::Error> {
         String::try_from(route.url)
     }
-}
-
-#[derive(Debug)]
-pub struct Router {
-    lookup: HashMap<Authority, Route>,
 }

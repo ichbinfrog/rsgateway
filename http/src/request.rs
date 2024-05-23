@@ -103,11 +103,11 @@ impl Request {
         let mut state: u8 = 0;
 
         loop {
-            match buffer.read_line(&mut line).await {
-                Ok(0) => {
+            match buffer.read_line(&mut line).await? {
+                0 => {
                     break;
                 }
-                Ok(_n) => match state {
+                _n => match state {
                     0 => {
                         let mut acc = String::with_capacity(line.len());
                         let mut j = 0;
@@ -144,9 +144,6 @@ impl Request {
                         break;
                     }
                 },
-                Err(e) => {
-                    return Err(e.into());
-                }
             }
         }
 

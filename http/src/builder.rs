@@ -1,4 +1,3 @@
-
 use crate::{auth::authorization::Authorization, uri::path::Path};
 
 use super::{
