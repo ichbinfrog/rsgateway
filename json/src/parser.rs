@@ -1,44 +1,11 @@
 use std::{
     collections::HashMap,
-    error::Error,
-    fmt::{Debug, Display},
-    io::{BufRead, Lines},
+    fmt::Debug,
+    io::{BufRead, BufWriter, Lines, Write},
     iter::Peekable,
-    num::{ParseFloatError, ParseIntError},
 };
 
-#[derive(Debug)]
-pub struct ParseError {
-    token: Option<Token>,
-    reason: String,
-}
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("parse_error")
-            .field("token", &self.token)
-            .field("reason", &self.reason)
-            .finish()
-    }
-}
-impl Error for ParseError {}
-impl From<ParseIntError> for ParseError {
-    fn from(src: ParseIntError) -> Self {
-        ParseError {
-            token: None,
-            reason: src.to_string(),
-        }
-    }
-}
-
-impl From<ParseFloatError> for ParseError {
-    fn from(src: ParseFloatError) -> Self {
-        ParseError {
-            token: None,
-            reason: src.to_string(),
-        }
-    }
-}
+use crate::error::ParserError;
 
 #[derive(PartialEq, Clone)]
 pub struct Token {
@@ -47,7 +14,6 @@ pub struct Token {
     end: usize,
     kind: TokenKind,
 }
-
 impl Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -91,7 +57,7 @@ pub enum NumberNode {
     I64(i64),
 }
 
-pub fn value_to_node(token: Token) -> Result<Node, ParseError> {
+pub fn value_to_node(token: Token) -> Result<Node, ParserError> {
     match token {
         Token {
             kind: TokenKind::Value(ref s),
@@ -100,19 +66,19 @@ pub fn value_to_node(token: Token) -> Result<Node, ParseError> {
             "true" => Ok(Node::Boolean(true)),
             "false" => Ok(Node::Boolean(false)),
             "null" => Ok(Node::Null),
-            _ => Err(ParseError {
+            _ => Err(ParserError {
                 token: Some(token.clone()),
                 reason: "invalid value node".to_string(),
             }),
         },
-        _ => Err(ParseError {
+        _ => Err(ParserError {
             token: None,
             reason: "unknown node type".to_string(),
         }),
     }
 }
 
-pub fn number_to_node(input: &str) -> Result<Node, ParseError> {
+pub fn number_to_node(input: &str) -> Result<Node, ParserError> {
     #[derive(Clone, Copy)]
     enum State {
         Integer,
@@ -175,7 +141,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
     iter: &mut I,
     line: usize,
     index: usize,
-) -> Result<Token, ParseError> {
+) -> Result<Token, ParserError> {
     let mut res = String::new();
     let mut iter = iter.peekable();
 
@@ -193,7 +159,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
 
                         let n = hex.len();
                         if !(4..=6).contains(&n) {
-                            return Err(ParseError {
+                            return Err(ParserError {
                                 token: Some(Token {
                                     line,
                                     start: i,
@@ -209,7 +175,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
                                 res.push(c);
                             }
                             None => {
-                                return Err(ParseError {
+                                return Err(ParserError {
                                     token: Some(Token {
                                         line,
                                         start: i,
@@ -225,7 +191,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
                         res.push(ch);
                     }
                     _ => {
-                        return Err(ParseError {
+                        return Err(ParserError {
                             token: Some(Token {
                                 line,
                                 start: i,
@@ -237,7 +203,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
                     }
                 },
                 _ => {
-                    return Err(ParseError {
+                    return Err(ParserError {
                         token: Some(Token {
                             line,
                             start: index,
@@ -259,7 +225,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
             _ => res.push(ch),
         }
     }
-    Err(ParseError {
+    Err(ParserError {
         token: Some(Token {
             line,
             start: index,
@@ -280,231 +246,276 @@ pub fn take_while<I: Iterator<Item = (usize, char)>, F: Fn(&char) -> bool>(
     (*start, start + s.len(), s)
 }
 
-pub struct Parser {}
+pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Vec<Token> {
+    let mut res = Vec::<Token>::new();
 
-impl Parser {
-    pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Vec<Token> {
-        let mut res = Vec::<Token>::new();
+    for (i, line) in lines.enumerate() {
+        if let Ok(line) = line {
+            let mut iter = line.chars().peekable().enumerate();
 
-        for (i, line) in lines.enumerate() {
-            if let Ok(line) = line {
-                let mut iter = line.chars().peekable().enumerate();
-
-                while let Some((j, ch)) = iter.next() {
-                    match ch {
-                        '"' => {
-                            res.push(take_string(&mut iter, i, j).unwrap());
-                        }
-                        '{' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::BraceOpen,
-                        }),
-                        '}' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::BraceClose,
-                        }),
-                        '[' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::BracketOpen,
-                        }),
-                        ']' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::BracketClose,
-                        }),
-                        ':' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::Colon,
-                        }),
-                        ',' => res.push(Token {
-                            line: i,
-                            start: j,
-                            end: j + 1,
-                            kind: TokenKind::Comma,
-                        }),
-                        ch if ch.is_numeric() => {
-                            let (start, end, s) =
-                                take_while(&mut iter, j, |x| x.is_numeric() || *x == '.');
-                            res.push(Token {
-                                line: i,
-                                start,
-                                end,
-                                kind: TokenKind::Number(s),
-                            });
-                        }
-                        ch if ch.is_alphabetic() => {
-                            let (start, end, mut s) =
-                                take_while(&mut iter, j, |x| x.is_alphabetic());
-                            s.insert(0, ch);
-                            res.push(Token {
-                                line: i,
-                                start,
-                                end,
-                                kind: TokenKind::Value(s),
-                            });
-                        }
-                        _ => {}
+            while let Some((j, ch)) = iter.next() {
+                match ch {
+                    '"' => {
+                        res.push(take_string(&mut iter, i, j).unwrap());
                     }
+                    '{' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::BraceOpen,
+                    }),
+                    '}' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::BraceClose,
+                    }),
+                    '[' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::BracketOpen,
+                    }),
+                    ']' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::BracketClose,
+                    }),
+                    ':' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::Colon,
+                    }),
+                    ',' => res.push(Token {
+                        line: i,
+                        start: j,
+                        end: j + 1,
+                        kind: TokenKind::Comma,
+                    }),
+                    ch if ch.is_numeric() => {
+                        let (start, end, s) =
+                            take_while(&mut iter, j, |x| x.is_numeric() || *x == '.');
+                        res.push(Token {
+                            line: i,
+                            start,
+                            end,
+                            kind: TokenKind::Number(s),
+                        });
+                    }
+                    ch if ch.is_alphabetic() => {
+                        let (start, end, mut s) = take_while(&mut iter, j, |x| x.is_alphabetic());
+                        s.insert(0, ch);
+                        res.push(Token {
+                            line: i,
+                            start,
+                            end,
+                            kind: TokenKind::Value(s),
+                        });
+                    }
+                    _ => {}
                 }
             }
         }
-
-        res
     }
 
-    pub fn parse<'a, I: Iterator<Item = &'a Token>>(
-        &self,
-        iter: &mut Peekable<I>,
-    ) -> Result<Option<Node>, ParseError> {
-        match iter.next() {
-            Some(Token {
-                kind: TokenKind::BraceOpen,
+    res
+}
+
+pub fn parse<'a, I: Iterator<Item = &'a Token>>(
+    iter: &mut Peekable<I>,
+) -> Result<Option<Node>, ParserError> {
+    match iter.next() {
+        Some(Token {
+            kind: TokenKind::BraceOpen,
+            ..
+        }) => Ok(Some(parse_object(iter)?)),
+        Some(Token {
+            kind: TokenKind::BracketOpen,
+            ..
+        }) => Ok(Some(parse_array(iter)?)),
+        Some(Token {
+            kind: TokenKind::String(s),
+            ..
+        }) => Ok(Some(Node::String(s.clone()))),
+        Some(Token {
+            kind: TokenKind::Number(s),
+            ..
+        }) => Ok(Some(number_to_node(s)?)),
+        Some(
+            token @ Token {
+                kind: TokenKind::Value(_),
                 ..
-            }) => Ok(Some(self.parse_object(iter)?)),
+            },
+        ) => Ok(Some(value_to_node(token.clone())?)),
+        Some(token) => Err(ParserError {
+            token: Some(token.clone()),
+            reason: "unexpected token".to_string(),
+        }),
+        None => Ok(None),
+    }
+}
+
+pub fn parse_array<'a, I: Iterator<Item = &'a Token>>(
+    iter: &mut Peekable<I>,
+) -> Result<Node, ParserError> {
+    let mut array = Vec::<Node>::new();
+
+    loop {
+        match iter.peek() {
             Some(Token {
-                kind: TokenKind::BracketOpen,
+                kind: TokenKind::Comma,
                 ..
-            }) => Ok(Some(self.parse_array(iter)?)),
+            }) => {
+                iter.next();
+            }
             Some(Token {
-                kind: TokenKind::String(s),
+                kind: TokenKind::BracketClose,
                 ..
-            }) => Ok(Some(Node::String(s.clone()))),
-            Some(Token {
-                kind: TokenKind::Number(s),
-                ..
-            }) => Ok(Some(number_to_node(s)?)),
-            Some(
-                token @ Token {
-                    kind: TokenKind::Value(_),
-                    ..
-                },
-            ) => Ok(Some(value_to_node(token.clone())?)),
-            Some(token) => Err(ParseError {
-                token: Some(token.clone()),
-                reason: "unexpected token".to_string(),
-            }),
-            None => Ok(None),
+            }) => {
+                iter.next();
+                return Ok(Node::Array(array));
+            }
+            Some(_) => match parse(iter)? {
+                Some(obj) => {
+                    array.push(obj);
+                }
+                None => return Ok(Node::Array(array)),
+            },
+            None => {
+                return Err(ParserError {
+                    token: None,
+                    reason: "missing closing bracket".to_string(),
+                })
+            }
         }
     }
+}
 
-    pub fn parse_array<'a, I: Iterator<Item = &'a Token>>(
-        &self,
-        iter: &mut Peekable<I>,
-    ) -> Result<Node, ParseError> {
-        let mut array = Vec::<Node>::new();
+pub fn parse_object<'a, I: Iterator<Item = &'a Token>>(
+    iter: &mut Peekable<I>,
+) -> Result<Node, ParserError> {
+    let mut mapping: HashMap<String, Node> = HashMap::new();
 
-        loop {
-            match iter.peek() {
+    loop {
+        match (iter.next(), iter.next()) {
+            (
+                Some(
+                    token @ Token {
+                        kind: TokenKind::String(k),
+                        ..
+                    },
+                ),
+                Some(Token {
+                    kind: TokenKind::Colon,
+                    ..
+                }),
+            ) => match parse(iter)? {
+                Some(v) => {
+                    mapping.insert(k.to_string(), v);
+
+                    if let Some(Token {
+                        kind: TokenKind::BraceClose,
+                        ..
+                    }) = iter.next()
+                    {
+                        return Ok(Node::Object(mapping));
+                    }
+                }
+                None => {
+                    return Err(ParserError {
+                        token: Some(token.clone()),
+                        reason: "is missing value".to_string(),
+                    });
+                }
+            },
+            (
+                Some(
+                    token @ Token {
+                        kind: TokenKind::Comma,
+                        ..
+                    },
+                ),
+                None,
+            ) => {
+                return Err(ParserError {
+                    token: Some(token.clone()),
+                    reason: "comma should be followed by a token".into(),
+                });
+            }
+            (
                 Some(Token {
                     kind: TokenKind::Comma,
                     ..
-                }) => {
-                    iter.next();
-                }
-                Some(Token {
-                    kind: TokenKind::BracketClose,
-                    ..
-                }) => {
-                    iter.next();
-                    return Ok(Node::Array(array));
-                }
-                Some(_) => match self.parse(iter)? {
-                    Some(obj) => {
-                        array.push(obj);
-                    }
-                    None => return Ok(Node::Array(array)),
-                },
-                None => {
-                    return Err(ParseError {
-                        token: None,
-                        reason: "missing closing bracket".to_string(),
-                    })
-                }
+                }),
+                Some(_),
+            ) => {
+                continue;
             }
-        }
+            (None, None) => {
+                return Ok(Node::Object(mapping));
+            }
+            (t1, _) => {
+                return Err(ParserError {
+                    token: t1.cloned(),
+                    reason: "unexpected token".to_string(),
+                });
+            }
+        };
     }
+}
 
-    pub fn parse_object<'a, I: Iterator<Item = &'a Token>>(
-        &self,
-        iter: &mut Peekable<I>,
-    ) -> Result<Node, ParseError> {
-        let mut mapping: HashMap<String, Node> = HashMap::new();
-
-        loop {
-            match (iter.next(), iter.next()) {
-                (
-                    Some(
-                        token @ Token {
-                            kind: TokenKind::String(k),
-                            ..
-                        },
-                    ),
-                    Some(Token {
-                        kind: TokenKind::Colon,
-                        ..
-                    }),
-                ) => match self.parse(iter)? {
-                    Some(v) => {
-                        mapping.insert(k.to_string(), v);
-
-                        if let Some(Token {
-                            kind: TokenKind::BraceClose,
-                            ..
-                        }) = iter.next()
-                        {
-                            return Ok(Node::Object(mapping));
-                        }
+impl Node {
+    pub fn write<W: Write>(&self, writer: &mut BufWriter<W>) -> Result<(), ParserError> {
+        match self {
+            Node::String(s) => {
+                writer.write(&[b'"'])?;
+                writer.write(s.as_bytes())?;
+                writer.write(&[b'"'])?;
+            }
+            Node::Boolean(b) => {
+                writer.write(b.to_string().as_bytes())?;
+            }
+            Node::Null => {
+                writer.write(&[b'n', b'u', b'l', b'l'])?;
+            }
+            Node::Number(NumberNode::I64(i)) => {
+                writer.write(i.to_string().as_bytes())?;
+            }
+            Node::Number(NumberNode::F64(f)) => {
+                writer.write(f.to_string().as_bytes())?;
+            }
+            Node::Array(nodes) => {
+                writer.write(&[b'['])?;
+                let n = nodes.len();
+                for (i, node) in nodes.iter().enumerate() {
+                    node.write(writer)?;
+                    if i != n - 1 {
+                        writer.write(&[b','])?;
                     }
-                    None => {
-                        return Err(ParseError {
-                            token: Some(token.clone()),
-                            reason: "is missing value".to_string(),
-                        });
+                }
+                writer.write(&[b']'])?;
+            }
+            Node::Object(mapping) => {
+                writer.write(&[b'{'])?;
+                let n = mapping.len();
+                for (i, (k, v)) in mapping.iter().enumerate() {
+                    writer.write(&[b'"'])?;
+                    writer.write(k.as_bytes())?;
+                    writer.write(&[b'"', b':'])?;
+                    v.write(writer)?;
+
+                    if i != n - 1 {
+                        writer.write(&[b','])?;
                     }
-                },
-                (
-                    Some(
-                        token @ Token {
-                            kind: TokenKind::Comma,
-                            ..
-                        },
-                    ),
-                    None,
-                ) => {
-                    return Err(ParseError {
-                        token: Some(token.clone()),
-                        reason: "comma should be followed by a token".into(),
-                    });
                 }
-                (
-                    Some(Token {
-                        kind: TokenKind::Comma,
-                        ..
-                    }),
-                    Some(_),
-                ) => {
-                    continue;
-                }
-                (None, None) => {
-                    return Ok(Node::Object(mapping));
-                }
-                (t1, _) => {
-                    return Err(ParseError {
-                        token: t1.cloned(),
-                        reason: "unexpected token".to_string(),
-                    });
-                }
-            };
+                writer.write(&[b'}'])?;
+            }
+            _ => {}
         }
+
+        Ok(())
     }
 }
 
@@ -633,7 +644,7 @@ pub mod tests {
         ]
     )]
     fn test_tokenize(#[case] input: &str, #[case] expected: Vec<Token>) {
-        assert_eq!(Parser::tokenize(Cursor::new(input).lines()), expected);
+        assert_eq!(tokenize(Cursor::new(input).lines()), expected);
     }
 
     #[rstest]
@@ -658,11 +669,10 @@ pub mod tests {
         ]))
     )]
     fn test_array_parsing(#[case] input: &str, #[case] expected: Node) {
-        let tokens = Parser::tokenize(Cursor::new(input).lines());
+        let tokens = tokenize(Cursor::new(input).lines());
         let mut iter = tokens.iter().peekable();
 
-        let parser = Parser {};
-        let res = parser.parse(&mut iter).unwrap().unwrap();
+        let res = parse(&mut iter).unwrap().unwrap();
         assert_eq!(res, expected);
     }
 
@@ -686,11 +696,10 @@ pub mod tests {
         ])),
     )]
     fn test_object_parsing(#[case] input: &str, #[case] expected: Node) {
-        let tokens = Parser::tokenize(Cursor::new(input).lines());
+        let tokens = tokenize(Cursor::new(input).lines());
         let mut iter = tokens.iter().peekable();
 
-        let parser = Parser {};
-        let res = parser.parse(&mut iter).unwrap().unwrap();
+        let res = parse(&mut iter).unwrap().unwrap();
         assert_eq!(res, expected);
     }
 
@@ -706,5 +715,30 @@ pub mod tests {
     fn test_number_parsing(#[case] input: &str, #[case] expected: Node) {
         let node = number_to_node(input).unwrap();
         assert_eq!(node, expected);
+    }
+
+    #[rstest]
+    #[case(
+        Node::Object(HashMap::from_iter(vec![
+            (
+                "outer".to_string(),
+                Node::Object(HashMap::from_iter(vec![(
+                    "inner".to_string(),
+                    Node::String("🤑".to_string()),
+                )])),
+            ),
+            ("random".to_string(), Node::String("value".to_string())),
+        ])),
+    )]
+    fn test_write(#[case] node: Node) {
+        let mut buf = BufWriter::new(Vec::new());
+        node.write(&mut buf).unwrap();
+        let bytes = buf.into_inner().unwrap();
+
+        let tokens = tokenize(Cursor::new(bytes).lines());
+        let mut iter = tokens.iter().peekable();
+
+        let res = parse(&mut iter).unwrap().unwrap();
+        assert_eq!(res, node);
     }
 }
