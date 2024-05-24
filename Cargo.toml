@@ -5,7 +5,7 @@ members = [
     "cache",
     "dns",
     "encoding",
-    "http", "json", 
+    "http", "json",
     "protobuf", 
     "redis",
     "rsgateway",

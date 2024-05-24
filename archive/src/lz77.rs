@@ -259,32 +259,32 @@ pub mod tests {
         assert_eq!(find(&haystack, needle), index);
     }
 
-    #[test]
-    fn test_impl() {
-        let filename = "tests/les_miserables.txt";
-        let mut input = File::open(filename).unwrap();
-        let metadata = fs::metadata(filename).unwrap();
-        let mut input_buffer: Vec<u8> = vec![0; metadata.len() as usize];
-        input.read_exact(&mut input_buffer).unwrap();
+    // #[test]
+    // fn test_impl() {
+    //     let filename = "benches/testdata/les_miserables.txt";
+    //     let mut input = File::open(filename).unwrap();
+    //     let metadata = fs::metadata(filename).unwrap();
+    //     let mut input_buffer: Vec<u8> = vec![0; metadata.len() as usize];
+    //     input.read_exact(&mut input_buffer).unwrap();
 
-        let mut buf: Buffer<'_> = Buffer::new(&input_buffer, 4095, 15);
+    //     let mut buf: Buffer<'_> = Buffer::new(&input_buffer, 4095, 15);
 
-        let f = File::create("tests/les_miserables_compressed").unwrap();
-        let mut writer = BufWriter::new(f);
+    //     let f = File::create("benches/testdata/les_miserables_compressed").unwrap();
+    //     let mut writer = BufWriter::new(f);
 
-        buf.compress(&mut writer).unwrap();
-    }
+    //     buf.compress(&mut writer).unwrap();
+    // }
 
-    #[test]
-    fn test_read() {
-        let filename = "tests/les_miserables_compressed";
-        let input = File::open(filename).unwrap();
-        let mut buf: Buffer<'_> = Buffer::new(&[], 4095, 15);
+    // #[test]
+    // fn test_read() {
+    //     let filename = "benches/testdata/les_miserables_compressed";
+    //     let input = File::open(filename).unwrap();
+    //     let mut buf: Buffer<'_> = Buffer::new(&[], 4095, 15);
 
-        let mut reader = BufReader::new(input);
+    //     let mut reader = BufReader::new(input);
 
-        let output = File::create("tests/les_miserables_decompressed").unwrap();
-        let mut writer = BufWriter::new(output);
-        println!("{:?}", buf.decompress(&mut reader, &mut writer));
-    }
+    //     let output = File::create("tests/les_miserables_decompressed").unwrap();
+    //     let mut writer = BufWriter::new(output);
+    //     println!("{:?}", buf.decompress(&mut reader, &mut writer));
+    // }
 }

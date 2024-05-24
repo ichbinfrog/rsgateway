@@ -5,7 +5,7 @@ use std::{
 
 use crate::parser::Token;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParserError {
     pub token: Option<Token>,
     pub reason: String,

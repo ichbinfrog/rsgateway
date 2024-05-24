@@ -1,3 +1,4 @@
+use itertools::{Itertools, PeekingNext};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -71,8 +72,8 @@ pub fn value_to_node(token: Token) -> Result<Node, ParserError> {
                 reason: "invalid value node".to_string(),
             }),
         },
-        _ => Err(ParserError {
-            token: None,
+        t => Err(ParserError {
+            token: Some(t),
             reason: "unknown node type".to_string(),
         }),
     }
@@ -143,7 +144,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
     index: usize,
 ) -> Result<Token, ParserError> {
     let mut res = String::new();
-    let mut iter = iter.peekable();
+    let mut iter: Peekable<&mut I> = iter.peekable();
 
     while let Some((i, ch)) = iter.next() {
         match ch {
@@ -166,7 +167,8 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
                                     end: i + n,
                                     kind: TokenKind::BackSlash,
                                 }),
-                                reason: "invalid unicode character".to_string(),
+                                reason: "unicode character should contain 4..6 hex digits"
+                                    .to_string(),
                             });
                         }
 
@@ -210,7 +212,7 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
                             end: index + res.len(),
                             kind: TokenKind::BackSlash,
                         }),
-                        reason: "unclosed escape \\".to_string(),
+                        reason: "unexpected EOF, unclosed escape character \\".to_string(),
                     })
                 }
             },
@@ -236,27 +238,30 @@ pub fn take_string<I: Iterator<Item = (usize, char)>>(
     })
 }
 
-pub fn take_while<I: Iterator<Item = (usize, char)>, F: Fn(&char) -> bool>(
+pub fn take_while<I: Iterator<Item = (usize, char)> + PeekingNext, F: Fn(&char) -> bool>(
     iter: &mut I,
     index: usize,
     f: F,
 ) -> (usize, usize, String) {
-    let (n, s): (Vec<usize>, String) = iter.take_while(|(_, x)| f(x)).collect();
-    let start = n.first().unwrap_or(&index);
-    (*start, start + s.len(), s)
+    let (n, res): (Vec<usize>, String) = iter.peeking_take_while(|(_, x)| f(x)).collect();
+    let first = match n.first() {
+        Some(v) => v,
+        None => &index,
+    };
+    (*first, first + res.len(), res)
 }
 
-pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Vec<Token> {
+pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Result<Vec<Token>, ParserError> {
     let mut res = Vec::<Token>::new();
 
     for (i, line) in lines.enumerate() {
         if let Ok(line) = line {
-            let mut iter = line.chars().peekable().enumerate();
+            let mut iter = line.char_indices().peekable();
 
             while let Some((j, ch)) = iter.next() {
                 match ch {
                     '"' => {
-                        res.push(take_string(&mut iter, i, j).unwrap());
+                        res.push(take_string(&mut iter, i, j)?);
                     }
                     '{' => res.push(Token {
                         line: i,
@@ -294,9 +299,16 @@ pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Vec<Token> {
                         end: j + 1,
                         kind: TokenKind::Comma,
                     }),
-                    ch if ch.is_numeric() => {
-                        let (start, end, s) =
-                            take_while(&mut iter, j, |x| x.is_numeric() || *x == '.');
+                    ch if ch.is_numeric() || ch == '-' => {
+                        let (start, end, mut s) = take_while(&mut iter, j, |x| {
+                            x.is_numeric()
+                                || *x == '.'
+                                || *x == 'e'
+                                || *x == 'E'
+                                || *x == '-'
+                                || *x == '+'
+                        });
+                        s.insert(0, ch);
                         res.push(Token {
                             line: i,
                             start,
@@ -320,21 +332,39 @@ pub fn tokenize<T: BufRead>(lines: Lines<T>) -> Vec<Token> {
         }
     }
 
-    res
+    Ok(res)
 }
 
 pub fn parse<'a, I: Iterator<Item = &'a Token>>(
     iter: &mut Peekable<I>,
 ) -> Result<Option<Node>, ParserError> {
     match iter.next() {
+        // Some(token @ Token{
+        //     kind: TokenKind::BracketClose, ..
+        // }) => {
+        //     Err(ParserError {
+        //         token: Some(token.clone()),
+        //         reason: "unopened ]".to_string(),
+        //     })
+        // }
+        // Some(token @ Token{
+        //     kind: TokenKind::BraceClose, ..
+        // }) => {
+        //     Err(ParserError {
+        //         token: Some(token.clone()),
+        //         reason: "unopened }".to_string(),
+        //     })
+        // }
         Some(Token {
             kind: TokenKind::BraceOpen,
             ..
         }) => Ok(Some(parse_object(iter)?)),
-        Some(Token {
-            kind: TokenKind::BracketOpen,
-            ..
-        }) => Ok(Some(parse_array(iter)?)),
+        Some(
+            token @ Token {
+                kind: TokenKind::BracketOpen,
+                ..
+            },
+        ) => Ok(Some(parse_array(iter, token)?)),
         Some(Token {
             kind: TokenKind::String(s),
             ..
@@ -359,33 +389,97 @@ pub fn parse<'a, I: Iterator<Item = &'a Token>>(
 
 pub fn parse_array<'a, I: Iterator<Item = &'a Token>>(
     iter: &mut Peekable<I>,
+    open: &Token,
 ) -> Result<Node, ParserError> {
     let mut array = Vec::<Node>::new();
+    let mut last_is_value: bool = false;
 
     loop {
         match iter.peek() {
             Some(Token {
-                kind: TokenKind::Comma,
-                ..
+                kind: TokenKind::Colon,
+                line,
+                start,
+                end,
             }) => {
+                return Err(ParserError {
+                    token: Some(Token {
+                        line: *line,
+                        start: *start,
+                        end: *end,
+                        kind: TokenKind::Colon,
+                    }),
+                    reason: "<key>:<value> is not an accepted element in arrays".to_string(),
+                })
+            }
+            Some(Token {
+                kind: TokenKind::Comma,
+                line,
+                start,
+                end,
+            }) => {
+                if !last_is_value {
+                    return Err(ParserError {
+                        token: Some(Token {
+                            line: *line,
+                            start: *start,
+                            end: *end,
+                            kind: TokenKind::Comma,
+                        }),
+                        reason: "comma should be preceded by an element".to_string(),
+                    });
+                }
+                last_is_value = false;
                 iter.next();
             }
             Some(Token {
                 kind: TokenKind::BracketClose,
-                ..
+                line,
+                start,
+                end,
             }) => {
+                if !array.is_empty() && !last_is_value {
+                    return Err(ParserError {
+                        token: Some(Token {
+                            line: *line,
+                            start: *start,
+                            end: *end,
+                            kind: TokenKind::BracketClose,
+                        }),
+                        reason: "array should not end with a comma".to_string(),
+                    });
+                }
+
                 iter.next();
                 return Ok(Node::Array(array));
             }
-            Some(_) => match parse(iter)? {
+            Some(Token {
+                line,
+                start,
+                end,
+                kind,
+            }) => match parse(iter)? {
                 Some(obj) => {
+                    if last_is_value {
+                        return Err(ParserError {
+                            token: Some(Token {
+                                line: *line,
+                                start: *start,
+                                end: *end,
+                                kind: kind.clone(),
+                            }),
+                            reason: "elements in an array should be joined with a comma"
+                                .to_string(),
+                        });
+                    }
+                    last_is_value = true;
                     array.push(obj);
                 }
                 None => return Ok(Node::Array(array)),
             },
             None => {
                 return Err(ParserError {
-                    token: None,
+                    token: Some(open.clone()),
                     reason: "missing closing bracket".to_string(),
                 })
             }
@@ -399,70 +493,66 @@ pub fn parse_object<'a, I: Iterator<Item = &'a Token>>(
     let mut mapping: HashMap<String, Node> = HashMap::new();
 
     loop {
-        match (iter.next(), iter.next()) {
-            (
-                Some(
-                    token @ Token {
-                        kind: TokenKind::String(k),
-                        ..
-                    },
-                ),
+        match iter.next() {
+            Some(Token {
+                kind: TokenKind::BraceClose,
+                ..
+            }) => {
+                return Ok(Node::Object(mapping));
+            }
+            Some(
+                token @ Token {
+                    kind: TokenKind::String(k),
+                    ..
+                },
+            ) => match iter.next() {
                 Some(Token {
                     kind: TokenKind::Colon,
                     ..
-                }),
-            ) => match parse(iter)? {
-                Some(v) => {
-                    mapping.insert(k.to_string(), v);
-
-                    if let Some(Token {
-                        kind: TokenKind::BraceClose,
-                        ..
-                    }) = iter.next()
-                    {
-                        return Ok(Node::Object(mapping));
+                }) => match parse(iter)? {
+                    Some(v) => {
+                        mapping.insert(k.to_string(), v);
                     }
+                    None => {
+                        return Err(ParserError {
+                            token: Some(token.clone()),
+                            reason: "is missing value".to_string(),
+                        });
+                    }
+                },
+                _ => {
+                    return Err(ParserError {
+                        token: Some(token.clone()),
+                        reason: "should be preceded by <colon><element>".to_string(),
+                    });
+                }
+            },
+            Some(
+                token @ Token {
+                    kind: TokenKind::Comma,
+                    ..
+                },
+            ) => match iter.peek() {
+                Some(_) => {
+                    continue;
                 }
                 None => {
                     return Err(ParserError {
                         token: Some(token.clone()),
-                        reason: "is missing value".to_string(),
+                        reason: "comma should be followed by a token".into(),
                     });
                 }
             },
-            (
-                Some(
-                    token @ Token {
-                        kind: TokenKind::Comma,
-                        ..
-                    },
-                ),
-                None,
-            ) => {
-                return Err(ParserError {
-                    token: Some(token.clone()),
-                    reason: "comma should be followed by a token".into(),
-                });
-            }
-            (
-                Some(Token {
-                    kind: TokenKind::Comma,
-                    ..
-                }),
-                Some(_),
-            ) => {
-                continue;
-            }
-            (None, None) => {
+            None => {
                 return Ok(Node::Object(mapping));
             }
-            (t1, _) => {
+            Some(t1) => {
                 return Err(ParserError {
-                    token: t1.cloned(),
+                    token: Some(t1.clone()),
                     reason: "unexpected token".to_string(),
                 });
             }
-        };
+        }
     }
 }
 
@@ -470,49 +560,48 @@ impl Node {
     pub fn write<W: Write>(&self, writer: &mut BufWriter<W>) -> Result<(), ParserError> {
         match self {
             Node::String(s) => {
-                writer.write(&[b'"'])?;
-                writer.write(s.as_bytes())?;
-                writer.write(&[b'"'])?;
+                writer.write_all(&[b'"'])?;
+                writer.write_all(s.as_bytes())?;
+                writer.write_all(&[b'"'])?;
             }
             Node::Boolean(b) => {
-                writer.write(b.to_string().as_bytes())?;
+                writer.write_all(b.to_string().as_bytes())?;
             }
             Node::Null => {
-                writer.write(&[b'n', b'u', b'l', b'l'])?;
+                writer.write_all(&[b'n', b'u', b'l', b'l'])?;
             }
             Node::Number(NumberNode::I64(i)) => {
-                writer.write(i.to_string().as_bytes())?;
+                writer.write_all(i.to_string().as_bytes())?;
             }
             Node::Number(NumberNode::F64(f)) => {
-                writer.write(f.to_string().as_bytes())?;
+                writer.write_all(f.to_string().as_bytes())?;
             }
             Node::Array(nodes) => {
-                writer.write(&[b'['])?;
+                writer.write_all(&[b'['])?;
                 let n = nodes.len();
                 for (i, node) in nodes.iter().enumerate() {
                     node.write(writer)?;
                     if i != n - 1 {
-                        writer.write(&[b','])?;
+                        writer.write_all(&[b','])?;
                     }
                 }
-                writer.write(&[b']'])?;
+                writer.write_all(&[b']'])?;
             }
             Node::Object(mapping) => {
-                writer.write(&[b'{'])?;
+                writer.write_all(&[b'{'])?;
                 let n = mapping.len();
                 for (i, (k, v)) in mapping.iter().enumerate() {
-                    writer.write(&[b'"'])?;
-                    writer.write(k.as_bytes())?;
-                    writer.write(&[b'"', b':'])?;
+                    writer.write_all(&[b'"'])?;
+                    writer.write_all(k.as_bytes())?;
+                    writer.write_all(&[b'"', b':'])?;
                     v.write(writer)?;
 
                     if i != n - 1 {
-                        writer.write(&[b','])?;
+                        writer.write_all(&[b','])?;
                     }
                 }
-                writer.write(&[b'}'])?;
+                writer.write_all(&[b'}'])?;
             }
-            _ => {}
         }
 
         Ok(())
@@ -522,10 +611,23 @@ impl Node {
 #[cfg(test)]
 pub mod tests {
 
+    use crate::error::ParserError;
     use std::io::Cursor;
 
     use super::*;
+    use pretty_assertions::assert_eq;
     use rstest::*;
+
+    #[rstest]
+    #[case(r#"true"#, Node::Boolean(true))]
+    #[case(r#"false"#, Node::Boolean(false))]
+    #[case(r#"null"#, Node::Null)]
+    fn test_take_value(#[case] input: &str, #[case] expected: Node) {
+        let tokens = tokenize(Cursor::new(input).lines()).unwrap();
+        let mut iter = tokens.iter().peekable();
+        let node = parse(&mut iter).unwrap().unwrap();
+        assert_eq!(node, expected);
+    }
 
     #[rstest]
     #[case(
@@ -572,8 +674,36 @@ pub mod tests {
 
     #[rstest]
     #[case(
-        r#"
-        {
+        r#"{
+            "index": 0
+        }"#,
+        vec![
+            Token {line: 0, start: 0, end: 1, kind: TokenKind::BraceOpen},
+            Token {line: 1, start: 12, end: 17, kind: TokenKind::String("index".to_string())},
+            Token {line: 1, start: 19, end: 20, kind: TokenKind::Colon},
+            Token {line: 1, start: 21, end: 21, kind: TokenKind::Number("0".to_string())},
+            Token {line: 2, start: 8, end: 9, kind: TokenKind::BraceClose},
+        ]
+    )]
+    #[case(
+        r#"{
+            "id": "647ceaf3657eade56f8224eb",
+            "index": 0
+        }"#,
+        vec![
+            Token {line: 0, start: 0, end: 1, kind: TokenKind::BraceOpen},
+            Token {line: 1, start: 12, end: 14, kind: TokenKind::String("id".to_string())},
+            Token {line: 1, start: 16, end: 17, kind: TokenKind::Colon},
+            Token {line: 1, start: 18, end: 42, kind: TokenKind::String("647ceaf3657eade56f8224eb".to_string())},
+            Token {line: 1, start: 44, end: 45, kind: TokenKind::Comma},
+            Token {line: 2, start: 12, end: 17, kind: TokenKind::String("index".to_string())},
+            Token {line: 2, start: 19, end: 20, kind: TokenKind::Colon},
+            Token {line: 2, start: 21, end: 21, kind: TokenKind::Number("0".to_string())},
+            Token {line: 3, start: 8, end: 9, kind: TokenKind::BraceClose},
+        ]
+    )]
+    #[case(
+        r#"{
             "id": "647ceaf3657eade56f8224eb",
             "index": 0,
             "something": [],
@@ -581,70 +711,38 @@ pub mod tests {
             "nullValue": null
         }"#,
         vec![
-            Token {
-                line: 1, start: 8, end: 9, kind: TokenKind::BraceOpen,
-            },
-            Token {
-                line: 2, start: 13, end: 15, kind: TokenKind::String("id".to_string()),
-            },
-            Token {
-                line: 2, start: 16, end: 17, kind: TokenKind::Colon,
-            },
-            Token {
-                line: 2, start: 19, end: 43, kind: TokenKind::String("647ceaf3657eade56f8224eb".to_string()),
-            },
-            Token {
-                line: 2, start: 44, end: 45, kind: TokenKind::Comma,
-            },
-            Token {
-                line: 3, start: 13, end: 18, kind: TokenKind::String("index".to_string()),
-            },
-            Token {
-                line: 3, start: 19, end: 20, kind: TokenKind::Colon,
-            },
-            Token {
-                line: 3, start: 21, end: 21, kind: TokenKind::Number("".to_string()),
-            },
-            Token {
-                line: 4, start: 13, end: 22, kind: TokenKind::String("something".to_string()),
-            },
-            Token {
-                line: 4, start: 23, end: 24, kind: TokenKind::Colon,
-            },
-            Token {
-                line: 4, start: 25, end: 26, kind: TokenKind::BracketOpen,
-            },
-            Token {
-                line: 4, start: 26, end: 27, kind: TokenKind::BracketClose,
-            },
-            Token {
-                line: 4, start: 27, end: 28, kind: TokenKind::Comma,
-            },
-            Token {
-                line: 5, start: 13, end: 20, kind: TokenKind::String("boolean".to_string()),
-            },
-            Token {
-                line: 5, start: 21, end: 22, kind: TokenKind::Colon,
-            },
-            Token {
-                line: 5, start: 24, end: 27, kind: TokenKind::Value("true".to_string()),
-            },
-            Token {
-                line: 6, start: 13, end: 22, kind: TokenKind::String("nullValue".to_string()),
-            },
-            Token {
-                line: 6, start: 23, end: 24, kind: TokenKind::Colon,
-            },
-            Token {
-                line: 6, start: 26, end: 29, kind: TokenKind::Value("null".to_string()),
-            },
-            Token {
-                line: 7, start: 8, end: 9, kind: TokenKind::BraceClose,
-            },
+            Token {line: 0, start: 0, end: 1, kind: TokenKind::BraceOpen},
+
+            Token {line: 1, start: 12, end: 14, kind: TokenKind::String("id".to_string())},
+            Token {line: 1, start: 16, end: 17, kind: TokenKind::Colon},
+            Token {line: 1, start: 18, end: 42, kind: TokenKind::String("647ceaf3657eade56f8224eb".to_string())},
+            Token {line: 1, start: 44, end: 45, kind: TokenKind::Comma},
+
+            Token {line: 2, start: 12, end: 17, kind: TokenKind::String("index".to_string())},
+            Token {line: 2, start: 19, end: 20, kind: TokenKind::Colon},
+            Token {line: 2, start: 21, end: 21, kind: TokenKind::Number("0".to_string())},
+            Token {line: 2, start: 22, end: 23, kind: TokenKind::Comma},
+
+            Token {line: 3, start: 12, end: 21, kind: TokenKind::String("something".to_string())},
+            Token {line: 3, start: 23, end: 24, kind: TokenKind::Colon},
+            Token {line: 3, start: 25, end: 26, kind: TokenKind::BracketOpen},
+            Token {line: 3, start: 26, end: 27, kind: TokenKind::BracketClose},
+            Token {line: 3, start: 27, end: 28, kind: TokenKind::Comma},
+
+            Token {line: 4, start: 12, end: 19, kind: TokenKind::String("boolean".to_string())},
+            Token {line: 4, start: 21, end: 22, kind: TokenKind::Colon},
+            Token {line: 4, start: 24, end: 27, kind: TokenKind::Value("true".to_string())},
+            Token {line: 4, start: 27, end: 28, kind: TokenKind::Comma},
+
+            Token {line: 5, start: 12, end: 21, kind: TokenKind::String("nullValue".to_string())},
+            Token {line: 5, start: 23, end: 24, kind: TokenKind::Colon},
+            Token {line: 5, start: 26, end: 29, kind: TokenKind::Value("null".to_string())},
+
+            Token {line: 6, start: 8, end: 9, kind: TokenKind::BraceClose},
         ]
     )]
     fn test_tokenize(#[case] input: &str, #[case] expected: Vec<Token>) {
-        assert_eq!(tokenize(Cursor::new(input).lines()), expected);
+        assert_eq!(tokenize(Cursor::new(input).lines()).unwrap(), expected);
     }
 
     #[rstest]
@@ -668,8 +766,55 @@ pub mod tests {
             ])),
         ]))
     )]
+    #[case(
+        r#"{"outer": [{}]}"#,
+        Node::Object(HashMap::from_iter(vec![
+            ("outer".to_string(), Node::Array(vec![
+                Node::Object(HashMap::new()),
+            ])),
+        ]))
+    )]
+    #[case(
+        r#"{"outer": [{}, {}, {}]}"#,
+        Node::Object(HashMap::from_iter(vec![
+            ("outer".to_string(), Node::Array(vec![
+                Node::Object(HashMap::new()),
+                Node::Object(HashMap::new()),
+                Node::Object(HashMap::new()),
+            ])),
+        ]))
+    )]
+    #[case(
+        r#"{"outer": [{"index": 0}, {}, {}]}"#,
+        Node::Object(HashMap::from_iter(vec![
+            ("outer".to_string(), Node::Array(vec![
+                Node::Object(HashMap::from_iter(vec![
+                    ("index".to_string(), Node::Number(NumberNode::I64(0))),
+                ])),
+                Node::Object(HashMap::new()),
+                Node::Object(HashMap::new()),
+            ])),
+        ]))
+    )]
+    #[case(
+        r#"[{"index": 0}, {"value": 1}]"#,
+        Node::Array(vec![
+            Node::Object(HashMap::from_iter(vec![
+                ("index".to_string(), Node::Number(NumberNode::I64(0))),
+            ])),
+            Node::Object(HashMap::from_iter(vec![
+                ("value".to_string(), Node::Number(NumberNode::I64(1))),
+            ]))
+        ])
+    )]
+    #[case(
+        r#"{"index":0}"#,
+        Node::Object(HashMap::from_iter(vec![
+            ("index".to_string(), Node::Number(NumberNode::I64(0))),
+        ]))
+    )]
     fn test_array_parsing(#[case] input: &str, #[case] expected: Node) {
-        let tokens = tokenize(Cursor::new(input).lines());
+        let tokens = tokenize(Cursor::new(input).lines()).unwrap();
         let mut iter = tokens.iter().peekable();
 
         let res = parse(&mut iter).unwrap().unwrap();
@@ -696,7 +841,7 @@ pub mod tests {
         ])),
     )]
     fn test_object_parsing(#[case] input: &str, #[case] expected: Node) {
-        let tokens = tokenize(Cursor::new(input).lines());
+        let tokens = tokenize(Cursor::new(input).lines()).unwrap();
         let mut iter = tokens.iter().peekable();
 
         let res = parse(&mut iter).unwrap().unwrap();
@@ -735,10 +880,214 @@ pub mod tests {
         node.write(&mut buf).unwrap();
         let bytes = buf.into_inner().unwrap();
 
-        let tokens = tokenize(Cursor::new(bytes).lines());
+        let tokens = tokenize(Cursor::new(bytes).lines()).unwrap();
         let mut iter = tokens.iter().peekable();
 
         let res = parse(&mut iter).unwrap().unwrap();
         assert_eq!(res, node);
+    }
+
+    #[rstest]
+    #[case(
+        r#"0.4e00669999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999969999999006"#,
+        Ok(Some(Node::Number(NumberNode::F64(f64::INFINITY))))
+    )]
+    #[case(
+        r#"-1e+9999"#,
+        Ok(Some(Node::Number(NumberNode::F64(-f64::INFINITY))))
+    )]
+    #[case(r#"1.5e+9999"#, Ok(Some(Node::Number(NumberNode::F64(f64::INFINITY)))))]
+    #[case(
+        r#"-123123e100000"#,
+        Ok(Some(Node::Number(NumberNode::F64(-f64::INFINITY))))
+    )]
+    #[case(
+        r#"123123e100000"#,
+        Ok(Some(Node::Number(NumberNode::F64(f64::INFINITY))))
+    )]
+    #[case(r#"123e-10000000"#, Ok(Some(Node::Number(NumberNode::F64(0.0)))))]
+    #[case(
+        r#"-123123123123123123123123123123"#,
+        Err(ParserError { token: None, reason: "number too small to fit in target type".to_string() })
+    )]
+    #[case(
+        r#"100000000000000000000"#,
+        Err(ParserError { token: None, reason: "number too large to fit in target type".to_string() })
+    )]
+    #[case(
+        r#"-237462374673276894279832749832423479823246327846"#,
+        Err(ParserError { token: None, reason: "number too small to fit in target type".to_string() })
+    )]
+    #[case(
+        r#"[1 true]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 4, end: 7, kind: TokenKind::Value("true".to_string())}), 
+            reason: "elements in an array should be joined with a comma".to_string() })
+    )]
+    #[case(
+        r#"[1, ]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+            reason: "array should not end with a comma".to_string() })
+    )]
+    #[case(
+        r#"["": 1]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Colon}), 
+            reason: "<key>:<value> is not an accepted element in arrays".to_string() }) 
+    )]
+    #[case(
+        r#"[""],"#,
+        Ok(Some(Node::Array(vec![Node::String("".to_string())])))
+    )]
+    #[case(
+        r#"[,1]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}), 
+            reason: "comma should be preceded by an element".to_string() })
+    )]
+    #[case(
+        r#"[1,,2]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Comma}), 
+            reason: "comma should be preceded by an element".to_string() })
+    )]
+    #[case(
+        r#"["x",,]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 5, end: 6, kind: TokenKind::Comma}), 
+            reason: "comma should be preceded by an element".to_string() })
+    )]
+    #[case(
+        r#"["",]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+            reason: "array should not end with a comma".to_string() })
+    )]
+    #[case(
+        r#"[1,]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::BracketClose}), 
+            reason: "array should not end with a comma".to_string() })
+    )]
+    #[case(
+        r#"["",]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+            reason: "array should not end with a comma".to_string() })
+    )]
+    #[case(
+        r#"[,]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}), 
+            reason: "comma should be preceded by an element".to_string() })
+    )]
+    #[case(
+        r#"[   , ""]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::Comma}), 
+            reason: "comma should be preceded by an element".to_string() })
+    )]
+    #[case(
+        r#"{"outer": ["x"]]}"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 15, end: 16, kind: TokenKind::BracketClose}), 
+            reason: "unexpected token".to_string() })
+    )]
+    #[case(
+        r#"["x""#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}), 
+            reason: "missing closing bracket".to_string() })
+    )]
+    #[case(
+        r#"[x"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::Value("x".to_string())}), 
+            reason: "invalid value node".to_string() })
+    )]
+    #[case(
+        r#"[-]"#,
+        Err(ParserError { 
+            token: None,
+            reason: "invalid digit found in string".to_string() })
+    )]
+    #[case(
+        r#"[3[4]]"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 2, end: 3, kind: TokenKind::BracketOpen}), 
+            reason: "elements in an array should be joined with a comma".to_string() })
+    )]
+    #[case(
+        r#"["a",
+        4
+        ,1,"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}), 
+            reason: "missing closing bracket".to_string() })
+    )]
+    #[case(
+        r#"[]"#,
+        Ok(Some(Node::Array(vec![])))
+    )]
+    #[case(
+        r#"{"outer": }"#,
+        Err(ParserError { 
+            token: Some(Token{line: 0, start: 10, end: 11, kind: TokenKind::BraceClose}), 
+            reason: "unexpected token".to_string() })
+    )]
+    fn test_edge_cases(#[case] input: &str, #[case] expected: Result<Option<Node>, ParserError>) {
+        let tokens = tokenize(Cursor::new(input).lines()).unwrap();
+        let mut iter = tokens.iter().peekable();
+
+        let res = parse(&mut iter);
+        assert_eq!(res, expected);
+    }
+
+    #[rstest]
+    #[case(
+        r#"{"\uDFAA":0}"#,
+       ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+    )]
+    #[case(
+        r#"["\uDADA"]"#,
+        ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+    )]
+    #[case(
+        r#"["\uD888\u1234"]""#,
+        ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+    )]
+    #[case(
+        r#"{"\uAB"}"#,
+        ParserError { 
+            token: Some(Token{line: 0, start: 2, end: 4, kind: TokenKind::BackSlash}), 
+            reason: "unicode character should contain 4..6 hex digits".to_string() 
+        }
+    )]
+    #[case(
+        r#"{"\A"}"#,
+        ParserError { 
+            token: Some(Token{line: 0, start: 2, end: 2, kind: TokenKind::BackSlash}), 
+            reason: "unclosed escape character \\".to_string() 
+        }
+    )]
+    #[case(
+        r#"{"\"#,
+        ParserError { 
+            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::BackSlash}), 
+            reason: "unexpected EOF, unclosed escape character \\".to_string() 
+        }
+    )]
+    #[case(
+        r#""abc"#,
+        ParserError { 
+            token: Some(Token{line: 0, start: 0, end: 3, kind: TokenKind::Quote}), 
+            reason: "unclosed quote \"".to_string() 
+        }
+    )]
+    fn test_tokenize_error(#[case] input: &str, #[case] expected: ParserError) {
+        let tokens = tokenize(Cursor::new(input).lines());
+        assert!(tokens.is_err());
+        assert_eq!(tokens.unwrap_err(), expected);
     }
 }

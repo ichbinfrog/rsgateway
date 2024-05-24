@@ -1,0 +1,47 @@
+[
+  {
+    "_id": "664f5758ff091246ce68426f",
+    "index": 0,
+    "guid": "30f9d5ac-ea2f-4bc6-b2a2-22e0b957c1d5",
+    "isActive": true,
+    "balance": "$1,263.08",
+    "picture": "http://placehold.it/32x32",
+    "age": 26,
+    "eyeColor": "green",
+    "name": "Buckner Patrick",
+    "gender": "male",
+    "company": "MANGLO",
+    "email": "bucknerpatrick@manglo.com",
+    "phone": "+1 (926) 406-3416",
+    "address": "667 Bedford Place, Waterloo, New Jersey, 571",
+    "about": "Reprehenderit minim veniam veniam ipsum adipisicing culpa fugiat consequat. Mollit sunt occaecat eu eu laborum nisi fugiat ipsum reprehenderit labore quis ex. Laborum proident excepteur qui aute et eu do culpa irure. Reprehenderit eu dolore aliquip ea ut dolor cillum. In dolore dolore sit cillum aliqua voluptate in esse enim magna cillum quis laborum. Deserunt proident ex laboris aliqua sint velit qui amet.\r\n",
+    "registered": "2020-11-30T07:08:17 -01:00",
+    "latitude": 79.558875,
+    "longitude": -106.183573,
+    "tags": [
+      "elit",
+      "in",
+      "laboris",
+      "ullamco",
+      "in",
+      "anim",
+      "quis"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Tabitha Jacobson"
+      },
+      {
+        "id": 1,
+        "name": "Valerie Mercer"
+      },
+      {
+        "id": 2,
+        "name": "Gwen Booker"
+      }
+    ],
+    "greeting": "Hello, Buckner Patrick! You have 3 unread messages.",
+    "favoriteFruit": "banana"
+  }
+]
