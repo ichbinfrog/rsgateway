@@ -1,5 +1,5 @@
 use std::{
-    fmt::Display,
+    fmt::{Debug, Display},
     num::{ParseFloatError, ParseIntError},
 };
 
@@ -42,5 +42,24 @@ impl From<std::io::Error> for ParserError {
             token: None,
             reason: src.to_string(),
         }
+    }
+}
+
+
+
+#[derive(Debug)]
+pub enum SerializeError {
+    IOError(std::io::Error)
+}
+impl Display for SerializeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("serialization_error")
+    }
+}
+impl std::error::Error for SerializeError {}
+
+impl From<std::io::Error> for SerializeError {
+    fn from(src: std::io::Error) -> Self {
+        Self::IOError(src)
     }
 }

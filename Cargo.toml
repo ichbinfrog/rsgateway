@@ -5,7 +5,7 @@ members = [
     "cache",
     "dns",
     "encoding",
-    "http", "json", "json_derive",
+    "http", "json", "json_derive", "json_test",
     "protobuf", 
     "redis",
     "rsgateway",

@@ -457,6 +457,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "json_test"
+version = "0.1.0"
+dependencies = [
+ "json",
+ "json_derive",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
