@@ -30,7 +30,10 @@ jobs:
           # https://docs.github.com/en/actions/using-containerized-services/about-service-containers#running-jobs-in-a-container
           # Here we perform the domain name resolution prior and pass it as an environment variable
           export REDIS_HOST="$(dig +short redis):6379"
+          echo $REDIS_HOST
           export HTTPBIN_HOST="$(dig +short httpbin):9000"
+          echo $HTTPBIN_HOST
+
           cargo +nightly tarpaulin \
             --workspace \
             --timeout 120 \
