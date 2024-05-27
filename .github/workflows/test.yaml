@@ -8,6 +8,12 @@ jobs:
     container:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
+
+    services:
+      redis:
+        image: redis:7.2.5-alpine3.20
+      httpbin:
+        image: kennethreitz/httpbin:latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4

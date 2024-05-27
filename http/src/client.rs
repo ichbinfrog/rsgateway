@@ -49,7 +49,6 @@ mod tests {
     use dns::resolver::DNS_IP_LOCAL;
     use rstest::*;
 
-    #[ignore]
     #[tokio::test]
     async fn test_client() {
         let request = Builder::new()
@@ -62,31 +61,30 @@ mod tests {
     }
 
     #[rstest]
-    #[case::is_ignored(
+    #[case(
         "basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case::is_ignored(
+    #[case(
         "basic-auth/user/correct-password",
         "user",
         "bad-password",
         StatusCode::Unauthorized
     )]
-    #[case::is_ignored(
+    #[case(
         "hidden-basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case::is_ignored(
+    #[case(
         "hidden-basic-auth/user/correct-password",
         "user",
         "bad-password",
         StatusCode::NotFound
     )]
-    #[ignore]
     #[tokio::test]
     async fn test_client_authorization(
         #[case] endpoint: &str,
