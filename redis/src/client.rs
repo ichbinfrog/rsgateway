@@ -153,13 +153,16 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use super::*;
     use tokio::net::TcpStream;
 
-    #[ignore]
     #[tokio::test]
     async fn test_redis_client() {
-        let stream = TcpStream::connect("0.0.0.0:6379").await.unwrap();
+        let stream = TcpStream::connect(env::var("REDIS_HOST").unwrap())
+            .await
+            .unwrap();
         let mut client = Client::new(stream);
 
         let key = "test_redis_client_k1".to_string();

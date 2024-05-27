@@ -62,25 +62,25 @@ mod tests {
     }
 
     #[rstest]
-    #[case::is_ignored(
+    #[case(
         "basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case::is_ignored(
+    #[case(
         "basic-auth/user/correct-password",
         "user",
         "bad-password",
         StatusCode::Unauthorized
     )]
-    #[case::is_ignored(
+    #[case(
         "hidden-basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case::is_ignored(
+    #[case(
         "hidden-basic-auth/user/correct-password",
         "user",
         "bad-password",
