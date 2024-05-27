@@ -177,6 +177,7 @@ mod tests {
     use crate::{uri::authority::Authority, version::Version};
     use pretty_assertions::assert_eq;
     use std::collections::HashMap;
+    use std::env;
     use tokio::net::{TcpListener, TcpStream};
 
     use super::*;
@@ -184,7 +185,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_request_call() {
-        let mut stream = TcpStream::connect("0.0.0.0:9000").await.unwrap();
+        let mut stream = TcpStream::connect(env::var("HTTPBIN_HOST").unwrap())
+            .await
+            .unwrap();
 
         let req: Request = Request {
             parts: Parts {
