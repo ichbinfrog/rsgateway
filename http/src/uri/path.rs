@@ -147,25 +147,25 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("", 
-        Query { 
-            raw: "".to_string(), 
+    #[case("",
+        Query {
+            raw: "".to_string(),
             lookup: HashMap::new(),
             count: 0,
         }
     )]
-    #[case("a=a1&a=a2", 
-        Query { 
-            raw: "a=a1&a=a2".to_string(), 
+    #[case("a=a1&a=a2",
+        Query {
+            raw: "a=a1&a=a2".to_string(),
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from(["a1".to_string(), "a2".to_string()])),
             ]),
             count: 2,
         }
     )]
-    #[case("a=a1&a=a2&b=b1&c=c1&b=b2&c=c2", 
-        Query { 
-            raw: "a=a1&a=a2&b=b1&c=c1&b=b2&c=c2".to_string(), 
+    #[case("a=a1&a=a2&b=b1&c=c1&b=b2&c=c2",
+        Query {
+            raw: "a=a1&a=a2&b=b1&c=c1&b=b2&c=c2".to_string(),
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from(["a1".to_string(), "a2".to_string()])),
                 ("b".to_string(), Vec::from(["b1".to_string(), "b2".to_string()])),
@@ -174,9 +174,9 @@ mod tests {
             count: 6,
         }
     )]
-    #[case("a=%3A&b=%26%26", 
-        Query { 
-            raw: "a=%3A&b=%26%26".to_string(), 
+    #[case("a=%3A&b=%26%26",
+        Query {
+            raw: "a=%3A&b=%26%26".to_string(),
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from([":".to_string()])),
                 ("b".to_string(), Vec::from(["&&".to_string()])),
@@ -184,9 +184,9 @@ mod tests {
             count: 2,
         }
     )]
-    #[case("a=%3A&", 
-        Query { 
-            raw: "a=%3A&".to_string(), 
+    #[case("a=%3A&",
+        Query {
+            raw: "a=%3A&".to_string(),
             lookup: HashMap::from([
                 ("a".to_string(), Vec::from([":".to_string()])),
             ]),
@@ -221,33 +221,33 @@ mod tests {
     #[rstest]
     #[case(
         "/",
-        Path { 
-            raw_path: "/".to_string(), 
-            raw_fragment: None, 
+        Path {
+            raw_path: "/".to_string(),
+            raw_fragment: None,
             query: None,
         }
     )]
     #[case(
         "/foo",
-        Path { 
-            raw_path: "/foo".to_string(), 
-            raw_fragment: None, 
+        Path {
+            raw_path: "/foo".to_string(),
+            raw_fragment: None,
             query: None,
         }
     )]
     #[case(
         "/foo#bar",
-        Path { 
-            raw_path: "/foo".to_string(), 
-            raw_fragment: Some("bar".to_string()), 
+        Path {
+            raw_path: "/foo".to_string(),
+            raw_fragment: Some("bar".to_string()),
             query: None,
         }
     )]
     #[case(
         "/foo?a=b#bar",
-        Path { 
-            raw_path: "/foo".to_string(), 
-            raw_fragment: Some("bar".to_string()), 
+        Path {
+            raw_path: "/foo".to_string(),
+            raw_fragment: Some("bar".to_string()),
             query: Some(Query{
                 raw: "a=b".to_string(),
                 lookup: HashMap::from([

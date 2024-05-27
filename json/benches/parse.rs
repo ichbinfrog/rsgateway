@@ -12,11 +12,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let input = File::open("benches/testdata/small.json").unwrap();
             let reader = BufReader::new(input);
 
-            black_box({
+            {
                 let tokens = tokenize(reader.lines()).unwrap();
                 let mut iter = tokens.iter().peekable();
                 let _ = parse(&mut iter).unwrap();
-            })
+            };
+            black_box(())
         });
     });
 
@@ -25,11 +26,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let input = File::open("benches/testdata/medium.json").unwrap();
             let reader = BufReader::new(input);
 
-            black_box({
+            {
                 let tokens = tokenize(reader.lines()).unwrap();
                 let mut iter = tokens.iter().peekable();
                 let _ = parse(&mut iter).unwrap();
-            })
+            };
+            black_box(())
         });
     });
 
@@ -38,11 +40,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let input = File::open("benches/testdata/large.json").unwrap();
             let reader = BufReader::new(input);
 
-            black_box({
+            {
                 let tokens = tokenize(reader.lines()).unwrap();
                 let mut iter = tokens.iter().peekable();
                 let _ = parse(&mut iter).unwrap();
-            })
+            };
+            black_box(())
         });
     });
 }

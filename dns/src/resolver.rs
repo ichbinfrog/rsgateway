@@ -14,6 +14,12 @@ pub const DNS_IP_GOOGLE: &[Ipv4Addr] = &[Ipv4Addr::new(8, 8, 8, 8), Ipv4Addr::ne
 
 pub struct Resolver {}
 
+impl Default for Resolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Resolver {
     pub fn new() -> Self {
         Self {}

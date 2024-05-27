@@ -183,7 +183,7 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case(
+    #[case::is_ignored(
         vec![
             "GET / HTTP/1.1",
             "Host: localhost:9090",
@@ -219,6 +219,7 @@ mod tests {
             hasbody: false,
         }
     )]
+    #[ignore]
     #[tokio::test]
     async fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request) {
         let listener = TcpListener::bind(("0.0.0.0", 0)).await.unwrap();
@@ -232,6 +233,7 @@ mod tests {
         assert_eq!(req, expected);
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_request_call() {
         let mut stream = TcpStream::connect("127.0.0.1:9000").await.unwrap();

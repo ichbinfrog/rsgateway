@@ -62,9 +62,9 @@ mod tests {
     #[rstest]
     #[case(
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0",
-        UserAgent { 
-            product: "Mozilla".to_string(), 
-            version: Version { major: 5, minor: Some(0), patch: None }, 
+        UserAgent {
+            product: "Mozilla".to_string(),
+            version: Version { major: 5, minor: Some(0), patch: None },
             comment: Some("(X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0".to_string()),
         }
     )]

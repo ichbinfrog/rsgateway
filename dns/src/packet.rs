@@ -475,57 +475,57 @@ mod tests {
     #[rstest]
     #[case(
         &[
-            0x7d, 0xd8, 
-            0x81, 0x80, 0x00, 0x01, 
-            0x00, 
-            0x01, 
-            0x00, 
-            0x00, 
-            0x00, 0x00, 
-            6, b'g', b'o', b'o', b'g', b'l', b'e', 
-            3, b'c', b'o', b'm', 0x00, 
-            0x00, 0x01, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 
-            0x00, 0x01, 0x2c, 0x00, 0x04, 0xac, 0xd9, 0x14, 0xce,        
+            0x7d, 0xd8,
+            0x81, 0x80, 0x00, 0x01,
+            0x00,
+            0x01,
+            0x00,
+            0x00,
+            0x00, 0x00,
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
+            3, b'c', b'o', b'm', 0x00,
+            0x00, 0x01, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00,
+            0x00, 0x01, 0x2c, 0x00, 0x04, 0xac, 0xd9, 0x14, 0xce
         ],
-        Packet { 
-            header: Header { 
-                id: 32216, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: true, 
-                recursion_available: true, 
-                zero: false, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 1, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 32216,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: true,
+                recursion_available: true,
+                zero: false,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 1,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::A, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::A,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::A { 
+                Record::A {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::A, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::A,
+                        class: QuestionClass::IN,
                     },
-                    addr: Ipv4Addr::new(172, 217, 20, 206), 
-                    ttl: 300, 
-                    rd_length: 4 
+                    addr: Ipv4Addr::new(172, 217, 20, 206),
+                    ttl: 300,
+                    rd_length: 4
                 }
-            ]), 
-            authorities: None, 
-            resources: None 
+            ]),
+            authorities: None,
+            resources: None
         }
     )]
     #[case(
@@ -534,10 +534,10 @@ mod tests {
             0x81, 0x80, 0x00, 0x01,
             0x00, 0x01,
             0x00, 0x00,
-            0x00, 0x00, 
-            6, b'g', b'o', b'o', b'g', b'l', b'e', 
-            3, b'c', b'o', b'm', 0x00, 
-            0x00, 0x1C, 
+            0x00, 0x00,
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
+            3, b'c', b'o', b'm', 0x00,
+            0x00, 0x1C,
             0x00, 0x01,
             0xC0, 0x0C,
             0x00, 0x1C,
@@ -555,45 +555,45 @@ mod tests {
             0x00, 0x20,
             0x0E
         ],
-        Packet { 
-            header: Header { 
-                id: 11838, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: true, 
-                recursion_available: true, 
-                zero: false, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 1, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 11838,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: true,
+                recursion_available: true,
+                zero: false,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 1,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::AAAA, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::AAAA,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::AAAA { 
+                Record::AAAA {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::AAAA, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::AAAA,
+                        class: QuestionClass::IN,
                     },
-                    addr: Ipv6Addr::from_str("2a00:1450:5040:708:1000::20").unwrap(), 
-                    ttl: 300, 
+                    addr: Ipv6Addr::from_str("2a00:1450:5040:708:1000::20").unwrap(),
+                    ttl: 300,
                     rd_length: 16
                 }
-            ]), 
+            ]),
             authorities: None,
-            resources: None 
+            resources: None
         }
     )]
     #[case(
@@ -601,7 +601,7 @@ mod tests {
             0x42,0xf4,
             0x81,0x80,0x00,0x01,
             0x00,0x00,0x00,0x01,0x00,0x00,
-            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
             3, b'c', b'o', b'm', 0x00,
             0x00,0x05,
             0x00,0x01,
@@ -616,37 +616,37 @@ mod tests {
             0x84,0x00,0x00,0x07,0x08,
             0x00,0x00,0x00,0x3c
         ],
-        Packet { 
-            header: Header { 
-                id: 17140, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: true, 
-                recursion_available: true, 
-                zero: false, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 0, 
-                authority_count: 1, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 17140,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: true,
+                recursion_available: true,
+                zero: false,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 0,
+                authority_count: 1,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::CNAME, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::CNAME,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             authorities: Some(vec![
-                Record::SOA { 
+                Record::SOA {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::SOA, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::SOA,
+                        class: QuestionClass::IN,
                     },
                     ttl: 60,
                     rd_length: 38,
@@ -658,9 +658,9 @@ mod tests {
                     expire: 1800,
                     minimum: 60,
                 }
-            ]), 
-            answers: None, 
-            resources: None 
+            ]),
+            answers: None,
+            resources: None
         }
     )]
     #[case(
@@ -668,7 +668,7 @@ mod tests {
             0x98,0xf3,
             0x81,0x80,0x00,0x01,
             0x00,0x04,0x00,0x00,0x00,0x00,
-            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
             3, b'c', b'o', b'm', 0x00,
             0, 2,
             0x00,0x01,
@@ -693,75 +693,75 @@ mod tests {
             0x03,b'n', b's', b'2',
             0xc0,0x0c
         ],
-        Packet { 
-            header: Header { 
-                id: 39155, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: true, 
-                recursion_available: true, 
-                zero: false, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 4, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 39155,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: true,
+                recursion_available: true,
+                zero: false,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 4,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::NS, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::NS,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::NS { 
+                Record::NS {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::NS, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::NS,
+                        class: QuestionClass::IN,
                     },
                     host: "ns2.google.com".to_string(),
                     ttl: 8485,
                     rd_length: 6,
                 },
-                Record::NS { 
+                Record::NS {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::NS, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::NS,
+                        class: QuestionClass::IN,
                     },
                     host: "ns4.google.com".to_string(),
                     ttl: 8485,
                     rd_length: 6,
                 },
-                Record::NS { 
+                Record::NS {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::NS, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::NS,
+                        class: QuestionClass::IN,
                     },
                     host: "ns1.google.com".to_string(),
                     ttl: 8485,
                     rd_length: 6,
                 },
-                Record::NS { 
+                Record::NS {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::NS, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::NS,
+                        class: QuestionClass::IN,
                     },
                     host: "ns2.google.com".to_string(),
                     ttl: 8485,
                     rd_length: 6,
                 },
-            ]), 
-            authorities: None, 
-            resources: None 
+            ]),
+            authorities: None,
+            resources: None
         }
     )]
     #[case(
@@ -769,7 +769,7 @@ mod tests {
             0xc2,0x39,
             0x81,0x80,0x00,0x01,
             0x00,0x01,0x00,0x00,0x00,0x00,
-            6, b'g', b'o', b'o', b'g', b'l', b'e', 
+            6, b'g', b'o', b'o', b'g', b'l', b'e',
             3, b'c', b'o', b'm', 0x00,
             0, 15u8,
             0x00,0x01,0xc0,0x0c,0x00,
@@ -778,46 +778,46 @@ mod tests {
             4, b's', b'm', b't', b'p',
             0xc0,0x0c
         ],
-        Packet { 
-            header: Header { 
-                id: 49721, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: true, 
-                recursion_available: true, 
-                zero: false, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 1, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 49721,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: true,
+                recursion_available: true,
+                zero: false,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 1,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::MX, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::MX,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::MX { 
+                Record::MX {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::MX, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::MX,
+                        class: QuestionClass::IN,
                     },
                     ttl: 191,
                     rd_length: 9,
                     preference: 10,
                     exchange: "smtp.google.com".to_string(),
                 }
-            ]), 
-            authorities: None, 
-            resources: None 
+            ]),
+            authorities: None,
+            resources: None
         }
     )]
     fn test_packet_parsing(#[case] input: &[u8], #[case] expected: Packet) {
@@ -831,87 +831,87 @@ mod tests {
 
     #[rstest]
     #[case(
-        Packet { 
-            header: Header { 
-                id: 16, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: false, 
-                recursion_available: false, 
-                zero: true, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 1, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 16,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: false,
+                recursion_available: false,
+                zero: true,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 1,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::A, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::A,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::A { 
+                Record::A {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::A, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::A,
+                        class: QuestionClass::IN,
                     },
-                    addr: Ipv4Addr::new(172, 217, 20, 206), 
-                    ttl: 300, 
-                    rd_length: 4 
+                    addr: Ipv4Addr::new(172, 217, 20, 206),
+                    ttl: 300,
+                    rd_length: 4
                 }
-            ]), 
-            authorities: None, 
-            resources: None 
+            ]),
+            authorities: None,
+            resources: None
         }
     )]
     #[case(
-        Packet { 
-            header: Header { 
-                id: 16, 
-                opcode: 0, 
-                query: true, 
-                authoritative_answer: false, 
-                truncated_message: false, 
-                recursion_desired: false, 
-                recursion_available: false, 
-                zero: true, 
-                authed_data: false, 
-                checking_disabled: false, 
-                response_code: ResponseCode::NoError, 
-                query_count: 1, 
-                answer_count: 1, 
-                authority_count: 0, 
-                additional_record_count: 0 
-            }, 
+        Packet {
+            header: Header {
+                id: 16,
+                opcode: 0,
+                query: true,
+                authoritative_answer: false,
+                truncated_message: false,
+                recursion_desired: false,
+                recursion_available: false,
+                zero: true,
+                authed_data: false,
+                checking_disabled: false,
+                response_code: ResponseCode::NoError,
+                query_count: 1,
+                answer_count: 1,
+                authority_count: 0,
+                additional_record_count: 0
+            },
             questions: Some(vec![
-                Question{ 
-                    name: "google.com".to_string(), 
-                    kind: QuestionKind::NS, 
-                    class: QuestionClass::IN, 
+                Question{
+                    name: "google.com".to_string(),
+                    kind: QuestionKind::NS,
+                    class: QuestionClass::IN,
                 }
-            ]), 
+            ]),
             answers: Some(vec![
-                Record::NS { 
+                Record::NS {
                     question: Question {
-                        name: "google.com".to_string(), 
-                        kind: QuestionKind::NS, 
-                        class: QuestionClass::IN, 
+                        name: "google.com".to_string(),
+                        kind: QuestionKind::NS,
+                        class: QuestionClass::IN,
                     },
                     host: "ns2.google.com".to_string(),
                     ttl: 8485,
                     rd_length: 6,
                 },
-            ]), 
-            authorities: None, 
-            resources: None 
+            ]),
+            authorities: None,
+            resources: None
         }
     )]
     #[tokio::test]

@@ -56,7 +56,7 @@ impl Client {
                 Ok(Some(frame))
             }
             Err(FrameError::IncompleteFrame) => Ok(None),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     }
 
@@ -156,6 +156,7 @@ mod tests {
     use super::*;
     use tokio::net::TcpStream;
 
+    #[ignore]
     #[tokio::test]
     async fn test_redis_client() {
         let stream = TcpStream::connect("0.0.0.0:6379").await.unwrap();

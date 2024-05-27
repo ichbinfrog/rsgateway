@@ -44,6 +44,12 @@ pub struct Trie {
     root: NodeRef,
 }
 
+impl Default for Trie {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Trie {
     pub fn new() -> Self {
         Self {

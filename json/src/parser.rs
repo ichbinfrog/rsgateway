@@ -908,32 +908,32 @@ pub mod tests {
     #[case(r#"123e-10000000"#, Ok(Some(Node::Number(NumberNode::F64(0.0)))))]
     #[case(
         r#"-123123123123123123123123123123"#,
-        Err(ParserError { token: None, reason: "number too small to fit in target type".to_string() })
+        Err(ParserError {token: None, reason: "number too small to fit in target type".to_string() })
     )]
     #[case(
         r#"100000000000000000000"#,
-        Err(ParserError { token: None, reason: "number too large to fit in target type".to_string() })
+        Err(ParserError {token: None, reason: "number too large to fit in target type".to_string() })
     )]
     #[case(
         r#"-237462374673276894279832749832423479823246327846"#,
-        Err(ParserError { token: None, reason: "number too small to fit in target type".to_string() })
+        Err(ParserError {token: None, reason: "number too small to fit in target type".to_string() })
     )]
     #[case(
         r#"[1 true]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 4, end: 7, kind: TokenKind::Value("true".to_string())}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 4, end: 7, kind: TokenKind::Value("true".to_string())}),
             reason: "elements in an array should be joined with a comma".to_string() })
     )]
     #[case(
         r#"[1, ]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}),
             reason: "array should not end with a comma".to_string() })
     )]
     #[case(
         r#"["": 1]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Colon}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Colon}),
             reason: "<key>:<value> is not an accepted element in arrays".to_string() }) 
     )]
     #[case(
@@ -942,88 +942,88 @@ pub mod tests {
     )]
     #[case(
         r#"[,1]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}),
             reason: "comma should be preceded by an element".to_string() })
     )]
     #[case(
         r#"[1,,2]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Comma}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::Comma}),
             reason: "comma should be preceded by an element".to_string() })
     )]
     #[case(
         r#"["x",,]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 5, end: 6, kind: TokenKind::Comma}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 5, end: 6, kind: TokenKind::Comma}),
             reason: "comma should be preceded by an element".to_string() })
     )]
     #[case(
         r#"["",]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}),
             reason: "array should not end with a comma".to_string() })
     )]
     #[case(
         r#"[1,]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::BracketClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 3, end: 4, kind: TokenKind::BracketClose}),
             reason: "array should not end with a comma".to_string() })
     )]
     #[case(
         r#"["",]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::BracketClose}),
             reason: "array should not end with a comma".to_string() })
     )]
     #[case(
         r#"[,]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 1, end: 2, kind: TokenKind::Comma}),
             reason: "comma should be preceded by an element".to_string() })
     )]
     #[case(
         r#"[   , ""]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::Comma}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 4, end: 5, kind: TokenKind::Comma}),
             reason: "comma should be preceded by an element".to_string() })
     )]
     #[case(
         r#"{"outer": ["x"]]}"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 15, end: 16, kind: TokenKind::BracketClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 15, end: 16, kind: TokenKind::BracketClose}),
             reason: "unexpected token".to_string() })
     )]
     #[case(
         r#"["x""#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}),
             reason: "missing closing bracket".to_string() })
     )]
     #[case(
         r#"[x"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::Value("x".to_string())}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::Value("x".to_string())}),
             reason: "invalid value node".to_string() })
     )]
     #[case(
         r#"[-]"#,
-        Err(ParserError { 
+        Err(ParserError {
             token: None,
             reason: "invalid digit found in string".to_string() })
     )]
     #[case(
         r#"[3[4]]"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 2, end: 3, kind: TokenKind::BracketOpen}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 2, end: 3, kind: TokenKind::BracketOpen}),
             reason: "elements in an array should be joined with a comma".to_string() })
     )]
     #[case(
         r#"["a",
         4
         ,1,"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 0, end: 1, kind: TokenKind::BracketOpen}),
             reason: "missing closing bracket".to_string() })
     )]
     #[case(
@@ -1032,8 +1032,8 @@ pub mod tests {
     )]
     #[case(
         r#"{"outer": }"#,
-        Err(ParserError { 
-            token: Some(Token{line: 0, start: 10, end: 11, kind: TokenKind::BraceClose}), 
+        Err(ParserError {
+            token: Some(Token{line: 0, start: 10, end: 11, kind: TokenKind::BraceClose}),
             reason: "unexpected token".to_string() })
     )]
     fn test_edge_cases(#[case] input: &str, #[case] expected: Result<Option<Node>, ParserError>) {
@@ -1047,41 +1047,41 @@ pub mod tests {
     #[rstest]
     #[case(
         r#"{"\uDFAA":0}"#,
-       ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+       ParserError {token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}),reason: "invalid unicode character".to_string() }
     )]
     #[case(
         r#"["\uDADA"]"#,
-        ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+        ParserError {token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}),reason: "invalid unicode character".to_string() }
     )]
     #[case(
         r#"["\uD888\u1234"]""#,
-        ParserError { token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}), reason: "invalid unicode character".to_string() }
+        ParserError {token: Some(Token{line: 0, start: 2, end: 6, kind: TokenKind::BackSlash}),reason: "invalid unicode character".to_string() }
     )]
     #[case(
         r#"{"\uAB"}"#,
-        ParserError { 
-            token: Some(Token{line: 0, start: 2, end: 4, kind: TokenKind::BackSlash}), 
+        ParserError {
+            token: Some(Token{line: 0, start: 2, end: 4, kind: TokenKind::BackSlash}),
             reason: "unicode character should contain 4..6 hex digits".to_string() 
         }
     )]
     #[case(
         r#"{"\A"}"#,
-        ParserError { 
-            token: Some(Token{line: 0, start: 2, end: 2, kind: TokenKind::BackSlash}), 
+        ParserError {
+            token: Some(Token{line: 0, start: 2, end: 2, kind: TokenKind::BackSlash}),
             reason: "unclosed escape character \\".to_string() 
         }
     )]
     #[case(
         r#"{"\"#,
-        ParserError { 
-            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::BackSlash}), 
+        ParserError {
+            token: Some(Token{line: 0, start: 1, end: 1, kind: TokenKind::BackSlash}),
             reason: "unexpected EOF, unclosed escape character \\".to_string() 
         }
     )]
     #[case(
         r#""abc"#,
-        ParserError { 
-            token: Some(Token{line: 0, start: 0, end: 3, kind: TokenKind::Quote}), 
+        ParserError {
+            token: Some(Token{line: 0, start: 0, end: 3, kind: TokenKind::Quote}),
             reason: "unclosed quote \"".to_string() 
         }
     )]

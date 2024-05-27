@@ -96,10 +96,10 @@ mod tests {
             0, 1,
             0, 1,
         ],
-        Question { 
-            name: "google.com".to_string(), 
-            kind: QuestionKind::A, 
-            class: QuestionClass::IN, 
+        Question {
+            name: "google.com".to_string(),
+            kind: QuestionKind::A,
+            class: QuestionClass::IN,
         },
     )]
     #[case(
@@ -109,10 +109,10 @@ mod tests {
             0, 5,
             0, 1,
         ],
-        Question { 
-            name: "google.com".to_string(), 
-            kind: QuestionKind::CNAME, 
-            class: QuestionClass::IN, 
+        Question {
+            name: "google.com".to_string(),
+            kind: QuestionKind::CNAME,
+            class: QuestionClass::IN,
         },
     )]
     fn test_question_parse(#[case] input: &[u8], #[case] expected: Question) {
