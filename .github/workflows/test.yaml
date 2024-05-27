@@ -14,11 +14,6 @@ jobs:
         image: redis:7.2.5-alpine3.20
         ports:
           - 6379:6379
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
       httpbin:
         image: kennethreitz/httpbin:latest
         ports:
