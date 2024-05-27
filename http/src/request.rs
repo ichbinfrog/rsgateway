@@ -184,7 +184,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_request_call() {
-        let mut stream = TcpStream::connect("127.0.0.1:9000").await.unwrap();
+        let mut stream = TcpStream::connect("0.0.0.0:9000").await.unwrap();
 
         let req: Request = Request {
             parts: Parts {
