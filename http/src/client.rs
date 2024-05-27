@@ -61,27 +61,26 @@ mod tests {
         assert_eq!(resp.status, StatusCode::Ok);
     }
 
-    #[ignore]
     #[rstest]
-    #[case(
+    #[case::is_ignored(
         "basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case(
+    #[case::is_ignored(
         "basic-auth/user/correct-password",
         "user",
         "bad-password",
         StatusCode::Unauthorized
     )]
-    #[case(
+    #[case::is_ignored(
         "hidden-basic-auth/user/correct-password",
         "user",
         "correct-password",
         StatusCode::Ok
     )]
-    #[case(
+    #[case::is_ignored(
         "hidden-basic-auth/user/correct-password",
         "user",
         "bad-password",

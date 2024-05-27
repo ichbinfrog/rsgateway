@@ -16,4 +16,12 @@ jobs:
           components: rustfmt
           rustflags: ""
       - run: cargo fmt --check
-      - run: cargo test
+      - run: |-
+          cargo install cargo-tarpaulin
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          fail_ci_if_error: true

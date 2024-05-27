@@ -182,9 +182,8 @@ mod tests {
     use super::*;
     use rstest::*;
 
-    #[ignore]
     #[rstest]
-    #[case(
+    #[case::is_ignored(
         vec![
             "GET / HTTP/1.1",
             "Host: localhost:9090",
