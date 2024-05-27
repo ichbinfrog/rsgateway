@@ -26,7 +26,7 @@ jobs:
           cargo fmt --check
       - name: "Run tests"
         run: |-
-          sudo apt-get install -y dnsutils
+          apt-get install -y dnsutils
           # Some tests do not have DNS resolution active, however github action services are exposed under the key's hostname
           # https://docs.github.com/en/actions/using-containerized-services/about-service-containers#running-jobs-in-a-container
           # Here we perform the domain name resolution prior and pass it as an environment variable
