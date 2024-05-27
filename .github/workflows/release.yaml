@@ -10,6 +10,9 @@ on:
     types:
       - completed
 
+permissions:
+  contents: write
+
 jobs:
   test:
     name: release
