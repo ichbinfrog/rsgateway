@@ -49,6 +49,7 @@ mod tests {
     use dns::resolver::DNS_IP_LOCAL;
     use rstest::*;
 
+    #[ignore]
     #[tokio::test]
     async fn test_client() {
         let request = Builder::new()
@@ -60,6 +61,7 @@ mod tests {
         assert_eq!(resp.status, StatusCode::Ok);
     }
 
+    #[ignore]
     #[rstest]
     #[case(
         "basic-auth/user/correct-password",

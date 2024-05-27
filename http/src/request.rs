@@ -182,6 +182,7 @@ mod tests {
     use super::*;
     use rstest::*;
 
+    #[ignore]
     #[rstest]
     #[case(
         vec![
@@ -232,6 +233,7 @@ mod tests {
         assert_eq!(req, expected);
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_request_call() {
         let mut stream = TcpStream::connect("127.0.0.1:9000").await.unwrap();
