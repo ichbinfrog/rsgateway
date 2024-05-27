@@ -12,8 +12,12 @@ jobs:
     services:
       redis:
         image: redis:7.2.5-alpine3.20
+        ports:
+          - 6379:6379
       httpbin:
         image: kennethreitz/httpbin:latest
+        ports:
+          - 9000:9000
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
