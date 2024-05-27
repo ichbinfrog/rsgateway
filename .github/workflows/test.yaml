@@ -24,9 +24,15 @@ jobs:
       - run: |-
           rustup component add rustfmt
           cargo fmt --check
-      - run: |-
-          # Some tests do not have DNS resolution active, however
-          # github action services are exposed under the key's hostname
+      - name: "Run tests"
+        run: |-
+          curl redis:6379 || :
+          curl httpbin:9000 || :
+          host httpbin:9000 || :
+
+          docker network ls || :
+          docker network inspect bridge || :
+          # Some tests do not have DNS resolution active, however github action services are exposed under the key's hostname
           # https://docs.github.com/en/actions/using-containerized-services/about-service-containers#running-jobs-in-a-container
           # Here we perform the domain name resolution prior and pass it as an environment variable
           export REDIS_HOST="$(dig +short redis):6379"
