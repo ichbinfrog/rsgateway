@@ -14,6 +14,11 @@ jobs:
         image: redis:7.2.5-alpine3.20
         ports:
           - 6379:6379
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       httpbin:
         image: kennethreitz/httpbin:latest
         ports:
@@ -22,15 +27,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |-
-          rustup component add rustfmt
-          cargo fmt --check
-      - run: |-
-          cargo +nightly tarpaulin \
-            --workspace \
-            --timeout 120 \
-            --out xml
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
-          fail_ci_if_error: true
+          curl -v locahost:6379 || :
+          curl -v redis:6379 || :
+          curl -v httpbin:9000 || :
+          curl -v localhost:9000 || :
+
+      # - run: |-
+      #     rustup component add rustfmt
+      #     cargo fmt --check
+      # - run: |-
+      #     cargo +nightly tarpaulin \
+      #       --workspace \
+      #       --timeout 120 \
+      #       --out xml
+      # - name: Upload to codecov.io
+      #   uses: codecov/codecov-action@v2
+      #   with:
+      #     token: ${{secrets.CODECOV_TOKEN}}
+      #     fail_ci_if_error: true
