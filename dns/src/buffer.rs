@@ -366,7 +366,7 @@ mod tests {
             u8::MAX, u8::MAX,
             u8::MAX, u8::MAX,
         ],
-        Header { 
+        Header {
             id: u16::MAX,
             opcode: 15,
             query: true,
@@ -381,7 +381,7 @@ mod tests {
             query_count: u16::MAX,
             answer_count: u16::MAX,
             authority_count: u16::MAX,
-            additional_record_count: u16::MAX, 
+            additional_record_count: u16::MAX,
         }
     )]
     fn test_header_read(#[case] input: &[u8], #[case] expected: Header) {
@@ -392,7 +392,7 @@ mod tests {
 
     #[rstest]
     #[case(
-        Header { 
+        Header {
             id: u16::MAX,
             opcode: 15,
             query: true,
@@ -407,7 +407,7 @@ mod tests {
             query_count: u16::MAX,
             answer_count: u16::MAX,
             authority_count: u16::MAX,
-            additional_record_count: u16::MAX, 
+            additional_record_count: u16::MAX,
         }
     )]
     #[tokio::test]

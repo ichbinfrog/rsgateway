@@ -237,12 +237,8 @@ impl<'a> Buffer<'a> {
 
 #[cfg(test)]
 pub mod tests {
-    use std::{
-        fs::{self, File},
-        io::{BufReader, BufWriter, Read},
-    };
 
-    use super::{find, Buffer};
+    use super::find;
     use rstest::*;
 
     #[rstest]

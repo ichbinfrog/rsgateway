@@ -1,9 +1,4 @@
-use std::collections::HashMap;
-
-use http::{
-    error::frame::FrameError,
-    uri::{authority::Authority, url::Url},
-};
+use http::{error::frame::FrameError, uri::url::Url};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MatchType {

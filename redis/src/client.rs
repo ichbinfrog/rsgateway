@@ -56,7 +56,7 @@ impl Client {
                 Ok(Some(frame))
             }
             Err(FrameError::IncompleteFrame) => Ok(None),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     }
 

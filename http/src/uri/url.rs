@@ -89,7 +89,7 @@ mod tests {
     #[rstest]
     #[case(
         "https://httpbin.org:80",
-        Url { 
+        Url {
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
             ..Default::default()
@@ -97,7 +97,7 @@ mod tests {
     )]
     #[case(
         "https://httpbin.org:80/status",
-        Url { 
+        Url {
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
             path: Path {
@@ -108,7 +108,7 @@ mod tests {
     )]
     #[case(
         "https://httpbin.org:80/",
-        Url { 
+        Url {
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
             path: Path {
@@ -119,7 +119,7 @@ mod tests {
     )]
     #[case(
         "https://httpbin.org:80/status?a=b",
-        Url { 
+        Url {
             scheme: "https".to_string(),
             authority: Authority::Domain{host: "httpbin.org".to_string(), port: 80},
             path: Path {

@@ -12,6 +12,12 @@ pub struct Builder {
     request: Request,
 }
 
+impl Default for Builder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Builder {
     pub fn new() -> Self {
         Self {

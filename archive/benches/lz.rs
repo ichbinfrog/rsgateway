@@ -20,7 +20,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let f = tempfile().unwrap();
         let mut writer = BufWriter::new(f);
 
-        b.iter(|| black_box(buf.compress(&mut writer).unwrap()));
+        b.iter(|| {
+            buf.compress(&mut writer).unwrap();
+            black_box(())
+        });
     });
 }
 

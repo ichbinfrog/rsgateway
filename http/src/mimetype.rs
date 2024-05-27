@@ -80,42 +80,42 @@ mod tests {
 
     #[rstest]
     #[case(
-        "image/webp", 
-        MimeType { 
-            kind: "image".to_string(), 
-            sub: "webp".to_string(), 
-            param: None 
+        "image/webp",
+        MimeType {
+            kind: "image".to_string(),
+            sub: "webp".to_string(),
+            param: None
         }
     )]
     #[case(
-        "text/plain;charset=UTF-8", 
-        MimeType { 
-            kind: "text".to_string(), 
-            sub: "plain".to_string(), 
+        "text/plain;charset=UTF-8",
+        MimeType {
+            kind: "text".to_string(),
+            sub: "plain".to_string(),
             param: Some(("charset".to_string(), "UTF-8".to_string())) 
         }
     )]
     #[case(
-        "text/plain;charset=UTF-8", 
-        MimeType { 
-            kind: "text".to_string(), 
-            sub: "plain".to_string(), 
+        "text/plain;charset=UTF-8",
+        MimeType {
+            kind: "text".to_string(),
+            sub: "plain".to_string(),
             param: Some(("charset".to_string(), "UTF-8".to_string())) 
         }
     )]
     #[case(
-        "text/plain;charset=", 
-        MimeType { 
-            kind: "text".to_string(), 
-            sub: "plain".to_string(), 
+        "text/plain;charset=",
+        MimeType {
+            kind: "text".to_string(),
+            sub: "plain".to_string(),
             param: Some(("charset".to_string(), "".to_string())) 
         }
     )]
     #[case(
-        "multipart/form-data; boundary=aBoundaryString", 
-        MimeType { 
-            kind: "multipart".to_string(), 
-            sub: "form-data".to_string(), 
+        "multipart/form-data; boundary=aBoundaryString",
+        MimeType {
+            kind: "multipart".to_string(),
+            sub: "form-data".to_string(),
             param: Some(("boundary".to_string(), "aBoundaryString".to_string())) 
         }
     )]

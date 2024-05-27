@@ -106,7 +106,7 @@ mod tests {
         Authority::IPv6{ip: Ipv6Addr::new(0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334), port: 9000}
     )]
     #[case(
-        "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", 
+        "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]",
         Authority::IPv6{ip: Ipv6Addr::new(0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334), port: 80}
     )]
     #[case(
