@@ -1,5 +1,14 @@
-name: "test"
-on: [push]
+name: "release"
+on:
+  push:
+    tags:
+    - .*
+
+  workflow_run:
+    workflows:
+    - "test"
+    types:
+    - completed
 
 jobs:
   test:
@@ -15,11 +24,11 @@ jobs:
           override: true
           components: rustfmt
           rustflags: ""
+      - run: cargo fmt --check
       - run: |-
           cargo install cargo-tarpaulin
-      - run: |-
-          cargo fmt --check
           cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:

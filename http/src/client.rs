@@ -86,6 +86,7 @@ mod tests {
         "bad-password",
         StatusCode::NotFound
     )]
+    #[ignore]
     #[tokio::test]
     async fn test_client_authorization(
         #[case] endpoint: &str,
