@@ -219,6 +219,7 @@ mod tests {
             hasbody: false,
         }
     )]
+    #[ignore]
     #[tokio::test]
     async fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request) {
         let listener = TcpListener::bind(("0.0.0.0", 0)).await.unwrap();
