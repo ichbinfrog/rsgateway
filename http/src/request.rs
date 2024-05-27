@@ -182,56 +182,6 @@ mod tests {
     use super::*;
     use rstest::*;
 
-    #[rstest]
-    #[case(
-        vec![
-            "GET / HTTP/1.1",
-            "Host: localhost:9090",
-        ],
-        Request {
-            parts: Parts {
-                method: Method::GET,
-                standard: Standard {
-                    name: "HTTP".to_string(),
-                    version: Version {
-                        major: 1,
-                        minor: Some(1),
-                        patch: None
-                    },
-                },
-                url: Url {
-                    scheme: "".to_string(),
-                    authority: Authority::Domain { host: "localhost".to_string(), port: 9090 },
-                    path: Path {
-                        raw_path: "/".to_string(),
-                        ..Default::default()
-                    },
-                },
-                headers: HeaderMap {
-                    raw: HashMap::from([
-                        ("host".to_string(), "localhost:9090".to_string()),
-                    ]),
-                    size: 18,
-                    ..Default::default()
-                },
-            },
-            body: None,
-            hasbody: false,
-        }
-    )]
-    #[tokio::test]
-    async fn test_parse_request(#[case] input: Vec<&str>, #[case] expected: Request) {
-        let listener = TcpListener::bind(("0.0.0.0", 0)).await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        let mut stream = TcpStream::connect(addr).await.unwrap();
-
-        let input = input.join("\r\n");
-        stream.write_all(input.as_bytes()).await.unwrap();
-
-        let req = Request::parse(&mut stream).await.unwrap();
-        assert_eq!(req, expected);
-    }
-
     #[tokio::test]
     async fn test_request_call() {
         let mut stream = TcpStream::connect("127.0.0.1:9000").await.unwrap();

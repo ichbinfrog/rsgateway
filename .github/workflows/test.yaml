@@ -17,7 +17,7 @@ jobs:
       httpbin:
         image: kennethreitz/httpbin:latest
         ports:
-          - 9000:9000
+          - 9000:80
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
