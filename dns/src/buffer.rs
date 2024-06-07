@@ -4,7 +4,7 @@ use std::{
     ops::{BitAnd, BitOrAssign, Sub},
 };
 
-use num_traits::{AsPrimitive, Num, Unsigned, Zero};
+use num_traits::{AsPrimitive, Num, PrimInt, Unsigned, Zero};
 
 use super::error::PacketError;
 
@@ -29,15 +29,7 @@ impl Default for PacketBuffer {
 impl PacketBuffer {
     pub fn set<T>(&mut self, pos: usize, val: T) -> Result<(), PacketError>
     where
-        T: 'static
-            + Copy
-            + Zero
-            + BitAnd<Output = T>
-            + std::ops::Shr<usize, Output = T>
-            + AsPrimitive<u8>
-            + Sized
-            + Unsigned
-            + Debug,
+        T: 'static + AsPrimitive<u8> + Unsigned + PrimInt,
         u8: AsPrimitive<T> + Num + Sized,
     {
         let n = size_of::<T>().sub(1);
@@ -51,15 +43,7 @@ impl PacketBuffer {
 
     pub async fn write<T>(&mut self, val: T) -> Result<(), PacketError>
     where
-        T: 'static
-            + Copy
-            + Zero
-            + BitAnd<Output = T>
-            + std::ops::Shr<usize, Output = T>
-            + AsPrimitive<u8>
-            + Sized
-            + Unsigned
-            + Debug,
+        T: 'static + AsPrimitive<u8> + Unsigned + PrimInt,
         u8: AsPrimitive<T> + Num + Sized,
     {
         if self.pos >= MAX_BUF_SIZE {

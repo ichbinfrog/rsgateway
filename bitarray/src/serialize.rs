@@ -4,7 +4,7 @@ use crate::buffer::{Buffer, Error, SizedString};
 use std::slice::Chunks;
 
 pub trait Serialize {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error>;
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error>;
 }
 
 pub trait Deserialize {
@@ -13,8 +13,37 @@ pub trait Deserialize {
         Self: Sized;
 }
 
+impl<T: Serialize> Serialize for Vec<T> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
+        let mut n = 0;
+        for v in self.iter() {
+            n += v.serialize(buf)?;
+        }
+        Ok(n)
+    }
+}
+
+impl<T: Serialize> Serialize for Option<T> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
+        match self {
+            Some(x) => x.serialize(buf),
+            None => Ok(0),
+        }
+    }
+}
+
+impl<T: Deserialize> Deserialize for Option<T> {
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    where
+        Self: Sized,
+    {
+        let (res, n) = T::deserialize(buf)?;
+        Ok((Some(res), n))
+    }
+}
+
 impl Serialize for String {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut i: usize = 0;
 
         for b in self.bytes() {
@@ -68,7 +97,7 @@ impl<const N: usize> Deserialize for SizedString<N> {
 }
 
 impl<const N: usize> Serialize for SizedString<N> {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let n = self.0.len();
         if n >= 2.pow(4 * N) as usize {
             return Err(Error::Overflow {
@@ -95,13 +124,13 @@ impl<const N: usize> Serialize for SizedString<N> {
             }
         }
 
-        self.0.write(buf)?;
+        self.0.serialize(buf)?;
         Ok(n + N)
     }
 }
 
 impl Serialize for u8 {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push(*self)
     }
 }
@@ -115,7 +144,7 @@ impl Deserialize for u8 {
 }
 
 impl Serialize for u16 {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push(*self)
     }
 }
@@ -130,7 +159,7 @@ impl Deserialize for u16 {
 }
 
 impl Serialize for u32 {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push(*self)
     }
 }
@@ -144,7 +173,7 @@ impl Deserialize for u32 {
 }
 
 impl Serialize for u64 {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push(*self)
     }
 }
@@ -158,7 +187,7 @@ impl Deserialize for u64 {
 }
 
 impl Serialize for bool {
-    fn write(&self, buf: &mut Buffer) -> Result<usize, Error> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_bool(*self)
     }
 }
@@ -187,7 +216,7 @@ pub mod tests {
         // Single byte length
         let mut buf: Buffer = Buffer::new(512);
         let sized_input = SizedString::<1>(input.to_string());
-        assert!(sized_input.write(&mut buf).is_ok());
+        assert!(sized_input.serialize(&mut buf).is_ok());
 
         buf.bit_cursor = 0;
         let (res, n) = SizedString::<1>::deserialize(&mut buf).unwrap();
@@ -197,7 +226,7 @@ pub mod tests {
         // Double byte length
         let mut buf: Buffer = Buffer::new(512);
         let sized_input = SizedString::<2>(input.to_string());
-        assert!(sized_input.write(&mut buf).is_ok());
+        assert!(sized_input.serialize(&mut buf).is_ok());
 
         buf.bit_cursor = 0;
         let (res, n) = SizedString::<2>::deserialize(&mut buf).unwrap();
