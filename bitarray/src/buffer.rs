@@ -1,10 +1,22 @@
-use std::fmt::{Binary, Debug};
+use std::{
+    fmt::{Binary, Debug},
+    str::Utf8Error,
+    string::FromUtf8Error,
+};
 
 use num_traits::{FromBytes, PrimInt, ToBytes, Unsigned};
 
 #[derive(Debug)]
 pub enum Error {
     OutOfRange { size: usize, pos: usize },
+    Overflow { size: usize, max: usize },
+    Utf8Error(FromUtf8Error),
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(value: FromUtf8Error) -> Self {
+        return Error::Utf8Error(value);
+    }
 }
 
 #[derive(Debug)]
@@ -17,8 +29,11 @@ pub struct Index {
 pub struct Buffer {
     data: Vec<u8>,
     bit_size: usize,
-    bit_cursor: usize,
+    pub(crate) bit_cursor: usize,
 }
+
+#[derive(Debug, PartialEq)]
+pub struct SizedString<const N: usize>(pub String);
 
 impl Debug for Buffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -189,6 +204,7 @@ impl Buffer {
             }
         }
 
+        self.bit_cursor += n * 8;
         Ok((T::from_be_bytes(&res), n * 8))
     }
 }
@@ -200,7 +216,7 @@ pub mod tests {
 
     #[rstest]
     fn test_simple_push() {
-        let mut buf = Buffer::new(32);
+        let mut buf: Buffer = Buffer::new(32);
         assert!(buf.push_bool(false).is_ok());
         assert!(buf.push(255u8).is_ok());
         assert!(buf.push_bool(false).is_ok());
