@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "archive", "bitarray",
+    "archive", "bitarray", "bitarray_derive",
     "cache",
     "dns",
     "encoding",

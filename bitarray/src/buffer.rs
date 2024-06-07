@@ -59,6 +59,10 @@ impl Buffer {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.bit_cursor = 0;
+    }
+
     fn set_bool(&mut self, i: usize, flag: bool) -> Result<Index, Error> {
         if i >= self.bit_size {
             return Err(Error::OutOfRange {

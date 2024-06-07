@@ -8,7 +8,7 @@ pub trait Serialize {
 }
 
 pub trait Deserialize {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized;
 }
@@ -31,7 +31,7 @@ impl Serialize for String {
 }
 
 impl<const N: usize> Deserialize for SizedString<N> {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -106,7 +106,7 @@ impl Serialize for u8 {
     }
 }
 impl Deserialize for u8 {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -119,8 +119,9 @@ impl Serialize for u16 {
         buf.push(*self)
     }
 }
+
 impl Deserialize for u16 {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -134,7 +135,7 @@ impl Serialize for u32 {
     }
 }
 impl Deserialize for u32 {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -148,7 +149,7 @@ impl Serialize for u64 {
     }
 }
 impl Deserialize for u64 {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -162,7 +163,7 @@ impl Serialize for bool {
     }
 }
 impl Deserialize for bool {
-    fn read(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -189,7 +190,7 @@ pub mod tests {
         assert!(sized_input.write(&mut buf).is_ok());
 
         buf.bit_cursor = 0;
-        let (res, n) = SizedString::<1>::read(&mut buf).unwrap();
+        let (res, n) = SizedString::<1>::deserialize(&mut buf).unwrap();
         assert_eq!(sized_input, res);
         assert_eq!(n, 1 + input.len());
 
@@ -199,7 +200,7 @@ pub mod tests {
         assert!(sized_input.write(&mut buf).is_ok());
 
         buf.bit_cursor = 0;
-        let (res, n) = SizedString::<2>::read(&mut buf).unwrap();
+        let (res, n) = SizedString::<2>::deserialize(&mut buf).unwrap();
         assert_eq!(sized_input, res);
         assert_eq!(n, 2 + input.len());
     }
