@@ -4,9 +4,9 @@ use bitarray::{
 };
 use bitarray_derive::{Deserialize, Serialize};
 
-// A TCP Header as defined in [RFC-9293](https://datatracker.ietf.org/doc/html/rfc9293#section-3.1)
+// An UDP Frame as defined in [RFC-768](https://datatracker.ietf.org/doc/html/rfc768)
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct Header<const N: usize> {
+pub struct Frame<const N: usize> {
     src: u16,
     dst: u16,
     length: u16,
@@ -24,7 +24,7 @@ pub mod tests {
 
     #[test]
     fn test_udp_serialization() {
-        let header = Header::<2> {
+        let header = Frame::<2> {
             src: 1,
             dst: 2,
             checksum: 3,
@@ -35,7 +35,7 @@ pub mod tests {
         let n = header.serialize(&mut buf).unwrap();
         buf.reset();
 
-        let (res, m) = Header::<2>::deserialize(&mut buf).unwrap();
+        let (res, m) = Frame::<2>::deserialize(&mut buf).unwrap();
         assert_eq!(n, m);
         assert_eq!(header, res);
     }
