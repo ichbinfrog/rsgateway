@@ -2,7 +2,7 @@ use bitarray::{buffer, serialize};
 use bitarray_derive::{Deserialize, Serialize};
 
 // A TCP Header as defined in [RFC-9293](https://datatracker.ietf.org/doc/html/rfc9293#section-3.1)
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 pub struct Header {
     src: u16,
     dst: u16,
@@ -43,11 +43,11 @@ pub mod tests {
             ..Default::default()
         };
         let mut buf = buffer::Buffer::new(258);
-        println!("{:?}", header.write(&mut buf));
-        println!("{:?}", buf);
+        let n = header.write(&mut buf).unwrap();
         buf.reset();
 
-        let res = Header::deserialize(&mut buf);
-        println!("{:?}", res);
+        let (res, m) = Header::deserialize(&mut buf).unwrap();
+        assert_eq!(n, m);
+        assert_eq!(res, header)
     }
 }

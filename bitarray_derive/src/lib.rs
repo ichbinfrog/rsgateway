@@ -75,12 +75,11 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                         let recurse = fields.named.iter().map(|f| {
                             let name = &f.ident;
                             quote_spanned! {f.span()=>
-                                self.#name.write(buf)
+                                self.#name.write(buf)?
                             }
                         });
                         quote! {
-                            #(#recurse?;)*
-                            Ok(0)
+                            Ok(0 #(+ #recurse)*)
                         }
                     }
                     _ => unimplemented!(),
