@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bitarray = { path = "../bitarray" }
+bitarray_derive = { path = "../bitarray_derive" }
 libc = "0.2"
-num-traits = "0.2"
-bitflags = "2.5"
+tun-tap = "0.1"

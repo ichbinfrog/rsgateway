@@ -10,7 +10,7 @@ members = [
     "protobuf",
     "redis",
     "rsgateway", 
-    "tcp", "udp",
+    "tcp",
 ]
 
 resolver = "2"

@@ -1,5 +1,3 @@
-pub mod tun;
-
 use bitarray::{
     buffer::{self, SizedString},
     serialize::{self, Deserialize, Serialize},
