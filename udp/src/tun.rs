@@ -1,8 +1,7 @@
 use std::{
-    fmt::Display,
     fs::{File, OpenOptions},
     io::{self, Read},
-    os::fd::{AsRawFd, RawFd},
+    os::fd::AsRawFd,
 };
 
 use libc::ioctl;
@@ -62,10 +61,7 @@ impl TunSocket {
 
 #[cfg(test)]
 pub mod tests {
-    use std::{
-        fs::{File, OpenOptions},
-        io::{Read, Write},
-    };
+    use std::io::{Read, Write};
 
     use super::TunSocket;
 

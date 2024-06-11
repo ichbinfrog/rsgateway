@@ -1,7 +1,6 @@
 use num_traits::Pow;
 
 use crate::buffer::{Buffer, Error, SizedString};
-use std::slice::Chunks;
 
 pub trait Serialize {
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error>;

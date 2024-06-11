@@ -175,13 +175,12 @@ impl Request {
 mod tests {
     use crate::uri::path::Path;
     use crate::{uri::authority::Authority, version::Version};
-    use pretty_assertions::assert_eq;
+
     use std::collections::HashMap;
     use std::env;
-    use tokio::net::{TcpListener, TcpStream};
+    use tokio::net::TcpStream;
 
     use super::*;
-    use rstest::*;
 
     #[tokio::test]
     async fn test_request_call() {

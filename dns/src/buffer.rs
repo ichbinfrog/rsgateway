@@ -1,7 +1,7 @@
 use std::{
     fmt::Debug,
     mem::size_of,
-    ops::{BitAnd, BitOrAssign, Sub},
+    ops::{BitOrAssign, Sub},
 };
 
 use num_traits::{AsPrimitive, Num, PrimInt, Unsigned, Zero};

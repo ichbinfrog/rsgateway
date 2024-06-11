@@ -1,8 +1,4 @@
 pub mod tun;
-use std::{
-    net::{SocketAddrV4, ToSocketAddrs},
-    os::fd::RawFd,
-};
 
 use bitarray::{
     buffer::{self, SizedString},
@@ -24,7 +20,6 @@ pub struct Packet<const N: usize> {
 
 #[cfg(test)]
 pub mod tests {
-    use std::fs::File;
 
     use buffer::Buffer;
 

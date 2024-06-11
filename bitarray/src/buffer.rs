@@ -1,6 +1,5 @@
 use std::{
     fmt::{Binary, Debug},
-    str::Utf8Error,
     string::FromUtf8Error,
 };
 

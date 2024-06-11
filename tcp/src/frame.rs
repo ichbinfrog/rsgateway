@@ -2,7 +2,7 @@ use bitarray::{
     buffer,
     serialize::{self, Deserialize, Serialize},
 };
-use bitarray_derive::{Deserialize, Serialize};
+use bitarray_derive::Serialize;
 
 // A TCP Header as defined in [RFC-9293](https://datatracker.ietf.org/doc/html/rfc9293#section-3.1)
 #[derive(Default, Serialize, PartialEq, Debug)]
