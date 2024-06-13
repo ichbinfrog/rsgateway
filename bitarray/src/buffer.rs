@@ -61,7 +61,7 @@ fn get_u8_mask(n: usize) -> u8 {
         5 => u5::MASK,
         6 => u6::MASK,
         7 => u7::MASK,
-        _ => unreachable!("wtf is {}", n),
+        _ => unreachable!("mask not implemented for {}", n),
     }
 }
 
@@ -145,14 +145,18 @@ impl Buffer {
         Ok((res, 1))
     }
 
-    pub fn push_bool(&mut self, val: bool) -> Result<usize, Error> {
-        if self.bit_cursor + 1 >= self.bit_size {
+    fn check_bounds(&self, n: usize) -> Result<(), Error> {
+        if n >= self.bit_size {
             return Err(Error::OutOfRange {
                 size: self.bit_size,
-                pos: self.bit_cursor + 1,
+                pos: n,
             });
         }
+        Ok(())
+    }
 
+    pub fn push_bool(&mut self, val: bool) -> Result<usize, Error> {
+        self.check_bounds(self.bit_cursor + 1)?;
         if val {
             self.set_bool(self.bit_cursor, val)?;
         }
@@ -165,12 +169,7 @@ impl Buffer {
         T: PrimInt + Unsigned + Binary + ToBytes,
     {
         let n = std::mem::size_of::<T>();
-        if self.bit_cursor + n >= self.bit_size {
-            return Err(Error::OutOfRange {
-                size: self.bit_size,
-                pos: self.bit_cursor + n,
-            });
-        }
+        self.check_bounds(self.bit_cursor + n)?;
 
         for v in val.to_be_bytes().as_ref() {
             match self.coord(self.bit_cursor) {
@@ -179,22 +178,22 @@ impl Buffer {
                 }
                 Index { pos, offset, .. } => {
                     self.data[pos] |= *v >> offset;
-                    self.data[pos + 1] |= *v << (8 - offset);
+                    self.data[pos + 1] |= *v << (Self::BYTE - offset);
                 }
             }
-            self.bit_cursor += 8;
+            self.bit_cursor += Self::BYTE;
         }
-        Ok(n * 8)
+        Ok(n * Self::BYTE)
     }
 
     pub fn skip(&mut self, n: usize) -> Result<usize, Error> {
-        if self.bit_cursor + n >= self.bit_size {
-            return Err(Error::OutOfRange {
-                size: self.bit_size,
-                pos: self.bit_cursor + n,
-            });
-        }
+        self.check_bounds(self.bit_cursor + n)?;
         self.bit_cursor += n;
+        Ok(n)
+    }
+
+    pub fn revert(&mut self, n: usize) -> Result<usize, Error> {
+        self.bit_cursor -= n;
         Ok(n)
     }
 
@@ -202,61 +201,37 @@ impl Buffer {
     where
         T: Number<UnderlyingType = u8>,
     {
-        let n = T::BITS;
-        if self.bit_cursor + n >= self.bit_size {
-            return Err(Error::OutOfRange {
-                size: self.bit_size,
-                pos: self.bit_cursor + n,
-            });
-        }
-
-        let split_bit = Self::BYTE - n;
-        let index = self.coord(self.bit_cursor);
-        let val = raw.value();
-
-        if index.offset <= split_bit {
-            self.data[index.pos] |= val << (split_bit - index.offset);
-        } else {
-            let mask = get_u8_mask(n);
-            let step = index.offset - split_bit;
-            let left: u8 = val.shr(step) & mask;
-            let right: u8 = val.shl(Self::BYTE - step) & (mask << split_bit);
-
-            self.data[index.pos] |= left;
-            self.data[index.pos + 1] |= right;
-        }
-
-        self.bit_cursor += n;
-        Ok(n)
+        let overflow = 8 - T::BITS;
+        self.push_primitive(raw.value() << overflow)?;
+        self.revert(overflow)?;
+        Ok(T::BITS)
     }
 
+    pub fn push_arbitrary_u16<T: Number<UnderlyingType = u16> + Copy>(&mut self, raw: T) -> Result<usize, Error> {
+        let overflow = 16 - T::BITS;
+        self.push_primitive(raw.value() << overflow)?;
+        self.revert(overflow)?;
+        Ok(T::BITS)
+    }
+ 
     pub fn read_arbitrary_u8<T>(&mut self) -> Result<(T, usize), Error>
     where
         T: Number<UnderlyingType = u8>,
     {
-        let n = T::BITS;
-        if self.bit_cursor + n >= self.bit_size {
-            return Err(Error::OutOfRange {
-                size: self.bit_size,
-                pos: self.bit_cursor + n,
-            });
-        }
+        let overflow = 8 - T::BITS;
+        let (res, _) = self.read_primitive::<u8, 1>()?;
+        self.revert(overflow)?;
+        Ok((T::new(res >> overflow), T::BITS))
+    }
 
-        let split_bit = Self::BYTE - n;
-        let index = self.coord(self.bit_cursor);
-        if index.offset <= split_bit {
-            self.bit_cursor += n;
-            Ok((
-                T::new(self.data[index.pos] >> (split_bit - index.offset)),
-                n,
-            ))
-        } else {
-            let step = index.offset - split_bit;
-            let left = (self.data[index.pos] & get_u8_mask(n - step)) << step;
-            let right = (self.data[index.pos + 1] >> (Self::BYTE - step)) & get_u8_mask(step);
-            self.bit_cursor += n;
-            Ok((T::new(left | right), n))
-        }
+    pub fn read_arbitrary_u16<T>(&mut self) -> Result<(T, usize), Error>
+    where
+        T: Number<UnderlyingType = u16>,
+    {
+        let overflow = 16 - T::BITS;
+        let (res, _) = self.read_primitive::<u16, 2>()?;
+        self.revert(overflow)?;
+        Ok((T::new(res >> overflow), T::BITS))
     }
 
     pub fn read_primitive<T, const N: usize>(&mut self) -> Result<(T, usize), Error>
@@ -265,13 +240,8 @@ impl Buffer {
         u8: AsPrimitive<T>,
     {
         let n = std::mem::size_of::<T>();
-        let end = self.bit_cursor + (n * 8);
-        if end >= self.bit_size {
-            return Err(Error::OutOfRange {
-                size: self.bit_size,
-                pos: self.bit_cursor + n,
-            });
-        }
+        let end = self.bit_cursor + (n * Self::BYTE);
+        self.check_bounds(end)?;
 
         let mut res = T::zero();
         loop {
@@ -323,7 +293,7 @@ impl Buffer {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use arbitrary_int::u7;
+    use arbitrary_int::{u13, u7};
     use rstest::*;
 
     #[rstest]
@@ -345,16 +315,22 @@ pub mod tests {
 
     #[rstest]
     fn test_generic_push() {
-        let mut buf = Buffer::new(32);
+        let mut buf = Buffer::new(48);
         assert!(buf.push_bool(false).is_ok());
         assert!(buf.push_bool(false).is_ok());
         assert!(buf.push_primitive(u16::MAX).is_ok());
-
+        assert!(buf.push_bool(false).is_ok());
+        assert!(buf.push_primitive(u8::MAX).is_ok());
         buf.reset();
         assert!(buf.skip(2).is_ok());
         let (v, n) = buf.read_primitive::<u16, 2>().unwrap();
         assert_eq!(n, 16);
         assert_eq!(v, u16::MAX);
+
+        assert!(buf.skip(1).is_ok());
+        let (v, n) = buf.read_primitive::<u8, 1>().unwrap();
+        assert_eq!(n, 8);
+        assert_eq!(v, u8::MAX);
     }
 
     #[rstest]
@@ -452,5 +428,20 @@ pub mod tests {
         let (res, read) = buf.read_arbitrary_u8::<u3>().unwrap();
         assert_eq!(read, 3);
         assert_eq!(res, input);
+    }
+
+    #[test]
+    fn test_arbitrary_u13() {
+        let mut buf: Buffer = Buffer::new(24);
+
+        assert!(buf.push_bool(false).is_ok());
+        assert!(buf.push_bool(false).is_ok());
+        assert_eq!(buf.push_arbitrary_u16(u13::MAX).unwrap(), 13);
+
+        buf.reset();
+        assert!(buf.skip(2).is_ok());
+        let (res, n) = buf.read_arbitrary_u16::<u13>().unwrap();
+        assert_eq!(res, u13::MAX);
+        assert_eq!(n, 13);
     }
 }

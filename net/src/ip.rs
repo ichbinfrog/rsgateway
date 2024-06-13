@@ -1,4 +1,4 @@
-use arbitrary_int::u4;
+use arbitrary_int::{u13, u3, u4};
 use bitarray::{
     buffer::{self},
     serialize::{self, Deserialize, Serialize},
@@ -7,15 +7,16 @@ use bitarray_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Packet {
-    flags: u16,
-    proto: u16,
+    tun_flags: u16,
+    tun_proto: u16,
 
     version: u4,
     ihl: u4,
     tos: u8,
     ident: u16,
 
-    frag: u16, // [flags;3 , offset:13]
+    flags: u3,
+    offset: u13,
     ttl: u8,
     protocol: u8,
     checksum: u16,
