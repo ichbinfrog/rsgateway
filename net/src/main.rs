@@ -14,6 +14,6 @@ fn main() {
         let mut buf = Buffer::from_vec(512, raw);
         buf.reset();
         let (res, m) = ip::Packet::deserialize(&mut buf).unwrap();
-        println!("{:?}", res);
+        println!("{:?}", buf);
     }
 }

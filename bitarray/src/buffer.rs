@@ -44,7 +44,7 @@ impl Debug for Buffer {
             if i != 0 {
                 write!(f, " ")?;
             }
-            write!(f, "{:08b}", n)?;
+            write!(f, "0x{:x},", n)?;
         }
 
         Ok(())

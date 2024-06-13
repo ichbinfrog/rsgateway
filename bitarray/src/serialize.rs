@@ -1,3 +1,5 @@
+use std::net::{Ipv4Addr, Ipv6Addr};
+
 use num_traits::Pow;
 
 use crate::buffer::{Buffer, Error, SizedString};
@@ -10,6 +12,21 @@ pub trait Deserialize {
     fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized;
+}
+
+impl Serialize for Ipv4Addr {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
+        self.to_bits().serialize(buf)
+    }
+}
+
+impl Deserialize for Ipv4Addr {
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+        where
+            Self: Sized {
+        let (bits, n) = buf.read_primitive::<u32, 4>()?;
+        Ok((Ipv4Addr::from_bits(bits), n))
+    }
 }
 
 impl<T: Serialize> Serialize for Vec<T> {
