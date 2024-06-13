@@ -8,3 +8,4 @@ bitarray = { path = "../bitarray" }
 bitarray_derive = { path = "../bitarray_derive" }
 libc = "0.2"
 tun-tap = "0.1"
+arbitrary-int = "1.2.7"

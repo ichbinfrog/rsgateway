@@ -1,6 +1,6 @@
-use bitarray::primitives::u4;
+use arbitrary_int::u4;
 use bitarray::{
-    buffer::{self, SizedString},
+    buffer::{self},
     serialize::{self, Deserialize, Serialize},
 };
 use bitarray_derive::{Deserialize, Serialize};
@@ -25,9 +25,8 @@ pub struct Packet {
 
 #[cfg(test)]
 pub mod tests {
-    use std::net::Ipv4Addr;
-
     use buffer::Buffer;
+    use std::net::Ipv4Addr;
 
     use super::*;
 

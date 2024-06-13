@@ -27,6 +27,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arbitrary-int"
+version = "1.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c84fc003e338a6f69fbd4f7fe9f92b535ff13e9af8997f3b14b6ddff8b1df46d"
+
+[[package]]
 name = "archive"
 version = "0.1.0"
 dependencies = [
@@ -83,6 +89,7 @@ dependencies = [
 name = "bitarray"
 version = "0.1.0"
 dependencies = [
+ "arbitrary-int",
  "num-traits",
  "rstest",
 ]
@@ -728,6 +735,7 @@ dependencies = [
 name = "net"
 version = "0.1.0"
 dependencies = [
+ "arbitrary-int",
  "bitarray",
  "bitarray_derive",
  "libc",

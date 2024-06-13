@@ -46,7 +46,7 @@ impl Serialize for String {
         let mut i: usize = 0;
 
         for b in self.bytes() {
-            buf.push(b)?;
+            buf.push_primitive(b)?;
             i += 1;
         }
 
@@ -63,21 +63,21 @@ impl<const N: usize> Deserialize for SizedString<N> {
     where
         Self: Sized,
     {
-        let (length, length_size) = match N {
+        let (length, _) = match N {
             1 => {
-                let (length, length_size) = buf.read::<u8, 1>()?;
+                let (length, length_size) = buf.read_primitive::<u8, 1>()?;
                 (length as usize, length_size)
             }
             2 => {
-                let (length, length_size) = buf.read::<u16, 2>()?;
+                let (length, length_size) = buf.read_primitive::<u16, 2>()?;
                 (length as usize, length_size)
             }
             3..=4 => {
-                let (length, length_size) = buf.read::<u32, 4>()?;
+                let (length, length_size) = buf.read_primitive::<u32, 4>()?;
                 (length as usize, length_size)
             }
             5..=8 => {
-                let (length, length_size) = buf.read::<u64, 8>()?;
+                let (length, length_size) = buf.read_primitive::<u64, 8>()?;
                 (length as usize, length_size)
             }
             _ => {
@@ -85,13 +85,13 @@ impl<const N: usize> Deserialize for SizedString<N> {
             }
         };
 
-        let mut value = Vec::<u8>::with_capacity(length as usize);
+        let mut value = Vec::<u8>::with_capacity(length);
         for _ in 0..length {
-            let (b, _) = buf.read::<u8, 1>()?;
+            let (b, _) = buf.read_primitive::<u8, 1>()?;
             value.push(b);
         }
         let res = SizedString::<N>(String::from_utf8(value)?);
-        return Ok((res, N + length as usize));
+        Ok((res, N + length))
     }
 }
 
@@ -107,16 +107,16 @@ impl<const N: usize> Serialize for SizedString<N> {
 
         match N {
             1 => {
-                buf.push(n as u8)?;
+                buf.push_primitive(n as u8)?;
             }
             2 => {
-                buf.push(n as u16)?;
+                buf.push_primitive(n as u16)?;
             }
             3..=4 => {
-                buf.push(n as u32)?;
+                buf.push_primitive(n as u32)?;
             }
             5..=8 => {
-                buf.push(n as u64)?;
+                buf.push_primitive(n as u64)?;
             }
             _ => {
                 unimplemented!("Serialization for string lengths over u64 has not been implemented")
@@ -130,7 +130,7 @@ impl<const N: usize> Serialize for SizedString<N> {
 
 impl Serialize for u8 {
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
-        buf.push(*self)
+        buf.push_primitive(*self)
     }
 }
 impl Deserialize for u8 {
@@ -138,13 +138,13 @@ impl Deserialize for u8 {
     where
         Self: Sized,
     {
-        buf.read::<u8, 1>()
+        buf.read_primitive::<u8, 1>()
     }
 }
 
 impl Serialize for u16 {
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
-        buf.push(*self)
+        buf.push_primitive(*self)
     }
 }
 
@@ -153,13 +153,13 @@ impl Deserialize for u16 {
     where
         Self: Sized,
     {
-        buf.read::<u16, 2>()
+        buf.read_primitive::<u16, 2>()
     }
 }
 
 impl Serialize for u32 {
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
-        buf.push(*self)
+        buf.push_primitive(*self)
     }
 }
 impl Deserialize for u32 {
@@ -167,13 +167,13 @@ impl Deserialize for u32 {
     where
         Self: Sized,
     {
-        buf.read::<u32, 4>()
+        buf.read_primitive::<u32, 4>()
     }
 }
 
 impl Serialize for u64 {
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
-        buf.push(*self)
+        buf.push_primitive(*self)
     }
 }
 impl Deserialize for u64 {
@@ -181,7 +181,7 @@ impl Deserialize for u64 {
     where
         Self: Sized,
     {
-        buf.read::<u64, 8>()
+        buf.read_primitive::<u64, 8>()
     }
 }
 

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 num-traits = "0.2"
+arbitrary-int = "1.2.7"
 
 [dev-dependencies]
 rstest = "0.19.0"
