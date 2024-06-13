@@ -40,9 +40,23 @@ pub struct OptList(Vec<Opt>);
 
 impl Deserialize for OptList {
     fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
-        where
-            Self: Sized {
-        Ok((OptList(Vec::new()), 0))
+    where
+        Self: Sized,
+    {
+        let mut res = Vec::<Opt>::new();
+        let mut i = 0;
+        loop {
+            let (opt, n) = Opt::deserialize(buf)?;
+            i += n;
+            match opt {
+                Opt::EndOfList => {
+                    res.push(opt);
+                    break;
+                }
+                _ => res.push(opt),
+            }
+        }
+        Ok((OptList(res), i))
     }
 }
 
@@ -78,34 +92,41 @@ pub enum Opt {
 
 impl Deserialize for Opt {
     fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
-        where
-            Self: Sized {
+    where
+        Self: Sized,
+    {
         let (ty, n) = buf.read_primitive::<u8, 1>()?;
         let copied = (ty >> 7) != 0;
         let class = ty >> 5;
         let number = ty & 0b11111;
-
         match (class, number) {
-            (0, 0) => {
-                return Ok((Opt::EndOfList, n))
+            (0, 0) => return Ok((Opt::EndOfList, n)),
+            (0, 1) => return Ok((Opt::NoOp, n)),
+            (0, 2) => {
+                buf.skip(2)?;
+                let (s, s_l) = buf.read_primitive::<u16, 2>()?;
+                let (c, c_l) = buf.read_primitive::<u16, 2>()?;
+                let (h, h_l) = buf.read_primitive::<u16, 2>()?;
+                let (tcc, tcc_l) = buf.read_arbitrary_u32::<u24>()?;
+                return Ok((Opt::Security { s, c, h, tcc }, n + s_l + c_l + h_l + tcc_l));
             }
-            (0, 1) => {
-                return Ok((Opt::NoOp, n))
-            }
-            // (0, 2) => {}
             // (0, 3) => {}
-            // (0, 9) => {}
             // (0, 7) => {}
             (0, 8) => {
-                println!("read: {:?}", buf.read_primitive::<u8, 1>()?);
-                println!("read: {:?}", buf.read_primitive::<u8, 1>()?);
+                buf.skip(2)?;
+                let (id, id_l) = buf.read_primitive::<u16, 2>()?;
+                return Ok((Opt::StreamID { id }, n + id_l));
             }
+            // (2, 9) => {}
             _ => {
-
-                println!("{} {} {}", copied, class, number);
+                unimplemented!(
+                    "ip options not implemented for (copied={},class={},number={})",
+                    copied,
+                    class,
+                    number
+                );
             }
         }
-        Ok((Opt::NoOp, n))
     }
 }
 
@@ -116,23 +137,24 @@ pub mod tests {
     use super::*;
 
     #[test]
-    fn test_ip_packet_parsing() {
+    fn test_ip_packet_option_parsing() {
+        println!("{:016b}", 0u16 | 0x1d | 0x44 << 8);
+        0x54;
         let raw: Vec<u8> = vec![
-            0x0, 0x0, 
-            0x8, 0x0, 
-            0x45, 0x0, 0x0, 0x54, 0x44, 0x1d, 0x40, 0x0, 0x40, 
-            0x1, 0x75, 0x38, 
-            192, 168, 0, 1, 
-            192, 168, 0, 2, 
-            
-            0x8, 0x0, 0x48, 0x8a, 0x0, 0x9, 0x0, 
-            0x1, 0xc6, 0xfd, 0x6a, 0x66, 0x0, 0x0, 0x0, 0x0, 
-            0xb0, 0x34, 0xf, 0x0, 0x0, 0x0, 0x0, 0x0, 0x10, 
-            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 
-            0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 
-            0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 
-            0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 
-            0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 
+            0x0, 0x0, // tun_flags
+            0x8, 0x0,  // tun_proto
+            0x45, // version | ihl
+            0x0,  // tos
+            0x0, 0x54, // length
+            0x44, 0x1d, // ident
+            0x40, 0x5,  // flags[3] | offset[13]
+            0x40, // ttl
+            0x1,  // protocol
+            0x75, 0x38, // checksum
+            192, 168, 0, 1, // src
+            192, 168, 0, 2,   // dst
+            0x1, // noOp
+            0x0, // eol
         ];
 
         let mut buf = Buffer::from_vec(256, raw);
@@ -146,7 +168,33 @@ pub mod tests {
                 let (packet, _) = Packet::deserialize(&mut buf).unwrap();
                 println!("{:?}", packet);
             }
-            _ => unimplemented!("ip version not implemented")
+            _ => unimplemented!("ip version not implemented"),
+        }
+    }
+
+    #[test]
+    fn test_ip_packet_parsing() {
+        let raw: Vec<u8> = vec![
+            0x0, 0x0, 0x8, 0x0, 0x45, 0x0, 0x0, 0x54, 0x44, 0x1d, 0x40, 0x0, 0x40, 0x1, 0x75, 0x38,
+            192, 168, 0, 1, 192, 168, 0, 2, 0x8, 0x0, 0x48, 0x8a, 0x0, 0x9, 0x0, 0x1, 0xc6, 0xfd,
+            0x6a, 0x66, 0x0, 0x0, 0x0, 0x0, 0xb0, 0x34, 0xf, 0x0, 0x0, 0x0, 0x0, 0x0, 0x10, 0x11,
+            0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d,
+            0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+        ];
+
+        let mut buf = Buffer::from_vec(256, raw);
+        buf.reset();
+
+        let (prefix, m) = Prefix::deserialize(&mut buf).unwrap();
+        println!("{:?}", prefix);
+
+        match prefix.version.value() {
+            4 => {
+                let (packet, _) = Packet::deserialize(&mut buf).unwrap();
+                println!("{:?}", packet);
+            }
+            _ => unimplemented!("ip version not implemented"),
         }
     }
 }

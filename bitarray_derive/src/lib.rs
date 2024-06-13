@@ -27,9 +27,10 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                                                 let x = x.value();
                                                 let expr: syn::Expr = syn::parse_str(&x).unwrap();
                                                 return quote_spanned! {f.span() => 
-                                                    let #name = #ty::default();
+                                                    let mut #name = #ty::default();
                                                     if #expr {
-                                                        let (#name, n) = #ty::deserialize(buf)?;
+                                                        let (tmp, n) = #ty::deserialize(buf)?;
+                                                        #name = tmp;
                                                         i += n;
                                                     }
                                                 }
