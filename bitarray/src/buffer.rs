@@ -118,6 +118,10 @@ impl Buffer {
         Ok(self.data[index.pos] == (self.data[index.pos] | index.mask))
     }
 
+    pub fn pos(&self) -> Index {
+        self.coord(self.bit_cursor)
+    }
+
     fn coord(&self, n: usize) -> Index {
         let offset = n % Self::BYTE;
         let mask = match offset {
@@ -213,6 +217,13 @@ impl Buffer {
         self.revert(overflow)?;
         Ok(T::BITS)
     }
+
+    pub fn push_arbitrary_u32<T: Number<UnderlyingType = u32> + Copy>(&mut self, raw: T) -> Result<usize, Error> {
+        let overflow = 32 - T::BITS;
+        self.push_primitive(raw.value() << overflow)?;
+        self.revert(overflow)?;
+        Ok(T::BITS)
+    }
  
     pub fn read_arbitrary_u8<T>(&mut self) -> Result<(T, usize), Error>
     where
@@ -232,6 +243,26 @@ impl Buffer {
         let (res, _) = self.read_primitive::<u16, 2>()?;
         self.revert(overflow)?;
         Ok((T::new(res >> overflow), T::BITS))
+    }
+     
+    pub fn read_arbitrary_u32<T>(&mut self) -> Result<(T, usize), Error>
+    where
+        T: Number<UnderlyingType = u32>,
+    {
+        let overflow = 32 - T::BITS;
+        let (res, _) = self.read_primitive::<u32, 4>()?;
+        self.revert(overflow)?;
+        Ok((T::new(res >> overflow), T::BITS))
+    }
+
+    pub fn peek<T, const N: usize>(&mut self) -> Result<T, Error>
+    where
+        T: 'static + PrimInt + Unsigned + Binary + FromBytes<Bytes = [u8; N]>,
+        u8: AsPrimitive<T>,
+    {
+        let (res, n) = self.read_primitive::<T, N>()?;
+        self.revert(n)?;
+        Ok(res)
     }
 
     pub fn read_primitive<T, const N: usize>(&mut self) -> Result<(T, usize), Error>
