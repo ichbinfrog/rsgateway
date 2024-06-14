@@ -10,7 +10,7 @@ use num_traits::{AsPrimitive, FromBytes, PrimInt, ToBytes, Unsigned};
 
 pub const BYTE_SIZE: usize = 8;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     OutOfRange { size: usize, pos: usize },
     Overflow { size: usize, max: usize },
@@ -34,6 +34,7 @@ pub struct Buffer {
     pub data: Vec<u8>,
     bit_size: usize,
     pub bit_cursor: usize,
+    byte_size: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -74,15 +75,17 @@ impl Buffer {
             bit_size: cap,
             data: vec![0u8; cap / BYTE_SIZE],
             bit_cursor: 0,
+            byte_size: cap / BYTE_SIZE,
         }
     }
 
-    pub fn from_vec(cap: usize, vec: Vec<u8>) -> Self {
+    pub fn from_vec(vec: Vec<u8>) -> Self {
         let n = vec.len();
         Self {
-            bit_size: cap,
+            bit_size: n * BYTE_SIZE,
             data: vec,
-            bit_cursor: n,
+            bit_cursor: n * BYTE_SIZE,
+            byte_size: n,
         }
     }
 
@@ -106,7 +109,7 @@ impl Buffer {
                 pos: i,
             });
         }
-        let index = self.coord(i);
+        let index = self.coord(i)?;
 
         if flag {
             self.data[index.pos] |= index.mask;
@@ -124,15 +127,15 @@ impl Buffer {
             });
         }
 
-        let index = self.coord(i);
+        let index = self.coord(i)?;
         Ok(self.data[index.pos] == (self.data[index.pos] | index.mask))
     }
 
-    pub fn pos(&self) -> Index {
+    pub fn pos(&self) -> Result<Index, Error> {
         self.coord(self.bit_cursor)
     }
 
-    fn coord(&self, n: usize) -> Index {
+    fn coord(&self, n: usize) -> Result<Index, Error> {
         let offset = n % BYTE_SIZE;
         let mask = match offset {
             0 => 0b10000000,
@@ -146,10 +149,18 @@ impl Buffer {
             _ => panic!("u8 overflow"),
         };
 
-        Index {
-            pos: n / 8,
-            offset,
-            mask,
+        let pos = n / 8;
+        if pos >= self.byte_size  {
+            Err(Error::OutOfRange {
+                size: self.byte_size,
+                pos: n,
+            })
+        } else {
+            Ok(Index {
+                pos: n / 8,
+                offset,
+                mask,
+            })
         }
     }
 
@@ -157,9 +168,8 @@ impl Buffer {
         self.bit_cursor = n;
     }
  
-    pub fn is_aligned(&self) -> bool {
-        let pos = self.pos();
-        return pos.offset == 0;
+    pub fn is_aligned(&self) -> Result<bool, Error> {
+        Ok(self.pos()?.offset == 0)
     }
 
     pub fn read_bool(&mut self) -> Result<(bool, usize), Error> {
@@ -195,7 +205,7 @@ impl Buffer {
         self.check_bounds(self.bit_cursor + n)?;
 
         for v in val.to_be_bytes().as_ref() {
-            match self.coord(self.bit_cursor) {
+            match self.coord(self.bit_cursor)? {
                 Index { pos, offset: 0, .. } => {
                     self.data[pos] = *v;
                 }
@@ -304,7 +314,7 @@ impl Buffer {
             if self.bit_cursor >= end {
                 break;
             }
-            let index = self.coord(self.bit_cursor);
+            let index = self.coord(self.bit_cursor)?;
             match index {
                 Index { pos, offset: 0, .. } => {
                     if self.bit_cursor + BYTE_SIZE > end {

@@ -1,6 +1,6 @@
 use bitarray::buffer;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DnsError {
     TooManyJumps {
         max: usize,

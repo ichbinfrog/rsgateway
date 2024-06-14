@@ -115,8 +115,8 @@ impl Serialize for QName {
 
             qname_l += buf.push_primitive::<u8>(n as u8)?;
 
-            let index = buf.pos();
-            if buf.is_aligned() {
+            let index = buf.pos()?;
+            if buf.is_aligned()? {
                 // udp packets are byte aligned so we can do this unsafe op
                 buf.data[index.pos..index.pos + n].copy_from_slice(label.as_bytes());
                 qname_l += buf.skip(n * buffer::BYTE_SIZE)?;
@@ -159,7 +159,10 @@ impl Deserialize for QName {
                     break;
                 }
                 res.push_str(delimeter);
-                res.push_str(&String::from_utf8_lossy(&buf.data[buf.pos().pos..buf.pos().pos + len as usize]));
+                let pos = buf.pos()?.pos;
+                res.push_str(&String::from_utf8_lossy(
+                    &buf.data[pos..pos + len as usize],
+                ));
                 delimeter = ".";
                 buf.skip(buffer::BYTE_SIZE * len as usize)?;
             }
@@ -198,7 +201,7 @@ mod tests {
         }
     )]
     fn test_packet_parsing(#[case] input: &[u8], #[case] expected: Header) {
-        let mut buf = Buffer::from_vec(MAX_BUF_SIZE, input.to_vec());
+        let mut buf = Buffer::from_vec(input.to_vec());
         buf.reset();
 
         let (header, _) = Header::deserialize(&mut buf).unwrap();
@@ -250,10 +253,8 @@ mod tests {
         #[case] second_expected: &str,
         #[case] third_expected: &str,
     ) {
-        let mut buf = Buffer::from_vec(MAX_BUF_SIZE, input.to_vec());
+        let mut buf = Buffer::from_vec(input.to_vec());
         buf.reset();
-        println!("{:?}", buf);
-
         let (first, _) = QName::deserialize(&mut buf).unwrap();
         assert_eq!(first.0, first_expected.to_string());
 
@@ -264,5 +265,63 @@ mod tests {
         buf.seek(second_offset * buffer::BYTE_SIZE);
         let (third, _) = QName::deserialize(&mut buf).unwrap();
         assert_eq!(third.0, third_expected.to_string());
+    }
+
+    #[rstest]
+    #[case(
+        &[
+            0xC0, 3, 0,
+            0xC0, 0, 0,
+        ],
+        DnsError::TooManyJumps {
+            max: MAX_QNAME_COMPRESSION_JUMPS
+        },
+    )]
+    #[case(
+        &[
+            0xC0, 3, 0,
+            3, b'f', b'o', b'o', 
+            0xC0, 0, 0,
+        ],
+        DnsError::TooManyJumps {
+            max: MAX_QNAME_COMPRESSION_JUMPS
+        }
+    )]
+    #[case(
+        &[
+            0xC0, 0, 0
+        ],
+        DnsError::TooManyJumps {
+            max: MAX_QNAME_COMPRESSION_JUMPS
+        }
+    )]
+    #[case(
+        &[
+            0xC0, 3, 0,
+            0xC0, 6, 0,
+            0xC0, 9, 0,
+            0xC0, 12, 0,
+            0xC0, 15, 0,
+            0xC0, 18, 0,
+            0, 0, 
+        ],
+        DnsError::TooManyJumps {
+            max: MAX_QNAME_COMPRESSION_JUMPS
+        }
+    )]
+    #[case(
+        &[
+            0xC0, 255, 0,
+        ],
+        DnsError::IOError(Error::OutOfRange { size: 24, pos: 2048 })
+    )]
+    fn test_qname_compression_edge_cases(#[case] input: &[u8], #[case] err: DnsError) {
+        let mut buf = Buffer::from_vec(input.to_vec());
+        buf.reset();
+        let res = QName::deserialize(&mut buf);
+        assert_eq!(
+            res.unwrap_err(),
+            err,
+        );
     }
 }
