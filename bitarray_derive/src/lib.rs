@@ -72,7 +72,7 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
     let expanded = quote! {
         impl #impl_generics serialize::Deserialize for #name #ty_generics #where_clause {
-            type Err = buffer::Error;
+            type Err = DeserializeError;
             fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err> {
                 #deserialize
             }
@@ -111,7 +111,7 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
 
     let expanded = quote! {
         impl #impl_generics serialize::Serialize for #name #ty_generics #where_clause {
-            type Err = buffer::Error;
+            type Err = SerializeError;
             fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, Self::Err> {
                 #write
             }

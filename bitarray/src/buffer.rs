@@ -153,6 +153,15 @@ impl Buffer {
         }
     }
 
+    pub fn seek(&mut self, n: usize) {
+        self.bit_cursor = n;
+    }
+ 
+    pub fn is_aligned(&self) -> bool {
+        let pos = self.pos();
+        return pos.offset == 0;
+    }
+
     pub fn read_bool(&mut self) -> Result<(bool, usize), Error> {
         let res = self.get_bool(self.bit_cursor)?;
         self.bit_cursor += 1;

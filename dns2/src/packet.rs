@@ -135,10 +135,7 @@ impl Deserialize for QName {
         Self: Sized,
     {
         let mut res = String::new();
-        let mut cur = buf.pos().pos;
         let mut delimeter = "";
-
-        let mut jumped = false;
         let mut jumps: usize = 0;
         let jump_flag: u8 = 0b11;
 
@@ -153,28 +150,19 @@ impl Deserialize for QName {
             if jump.value() == jump_flag {
                 let (offset, _) = buf.read_arbitrary_u16::<u14>()?;
                 let offset = offset.value();
-                cur = offset as usize;
-                buf.seek(cur * buffer::BYTE_SIZE);
-                jumped = true;
+                buf.seek(offset as usize * buffer::BYTE_SIZE);
                 jumps += 1;
             } else {
                 let (len, _) = buf.read_arbitrary_u8::<u6>()?;
                 let len = len.value();
-                println!("len={:?}", len);
-                cur += 1;
                 if len == 0 {
                     break;
                 }
                 res.push_str(delimeter);
-                res.push_str(&String::from_utf8_lossy(&buf.data[cur..cur + len as usize]));
+                res.push_str(&String::from_utf8_lossy(&buf.data[buf.pos().pos..buf.pos().pos + len as usize]));
                 delimeter = ".";
-                cur += len as usize;
                 buf.skip(buffer::BYTE_SIZE * len as usize)?;
             }
-        }
-
-        if !jumped {
-            buf.seek(cur);
         }
 
         Ok((QName(res), 0))
