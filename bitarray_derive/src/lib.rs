@@ -21,30 +21,30 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                         Some(attr) => {
                             if attr.path.is_ident("condition") {
                                 match attr.parse_meta() {
-                                    Ok(syn::Meta::NameValue(syn::MetaNameValue {lit, ..})) => {
-                                        match lit {
-                                            syn::Lit::Str(ref x) => {
-                                                let x = x.value();
-                                                let expr: syn::Expr = syn::parse_str(&x).unwrap();
-                                                return quote_spanned! {f.span() => 
-                                                    let mut #name = #ty::default();
-                                                    if #expr {
-                                                        let (tmp, n) = #ty::deserialize(buf)?;
-                                                        #name = tmp;
-                                                        i += n;
-                                                    }
+                                    Ok(syn::Meta::NameValue(syn::MetaNameValue {
+                                        lit, ..
+                                    })) => match lit {
+                                        syn::Lit::Str(ref x) => {
+                                            let x = x.value();
+                                            let expr: syn::Expr = syn::parse_str(&x).unwrap();
+                                            return quote_spanned! {f.span() =>
+                                                let mut #name = #ty::default();
+                                                if #expr {
+                                                    let (tmp, n) = #ty::deserialize(buf)?;
+                                                    #name = tmp;
+                                                    i += n;
                                                 }
-                                            }
-                                            _ => {}
+                                            };
                                         }
-                                    }
-                                    _ => {}                                    
+                                        _ => {}
+                                    },
+                                    _ => {}
                                 }
                             }
                         }
                         None => {}
                     };
-                   
+
                     quote_spanned! {f.span()=>
                         let (#name, n) = #ty::deserialize(buf)?;
                         i += n;
@@ -140,12 +140,13 @@ fn parse_condition_attribute(attrs: Vec<syn::Attribute>) -> syn::Result<proc_mac
 
     let meta = attr.parse_meta()?;
     match meta {
-        syn::Meta::NameValue(syn::MetaNameValue {lit, ..}) => {
+        syn::Meta::NameValue(syn::MetaNameValue { lit, .. }) => {
             return Ok(quote! {
                 if #lit {
 
                 }
-            }.into())
+            }
+            .into())
         }
         _ => {}
     }

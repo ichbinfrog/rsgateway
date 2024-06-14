@@ -22,8 +22,9 @@ impl Serialize for Ipv4Addr {
 
 impl Deserialize for Ipv4Addr {
     fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
-        where
-            Self: Sized {
+    where
+        Self: Sized,
+    {
         let (bits, n) = buf.read_primitive::<u32, 4>()?;
         Ok((Ipv4Addr::from_bits(bits), n))
     }

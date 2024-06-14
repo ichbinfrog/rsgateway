@@ -1,8 +1,8 @@
-use std::net::Ipv4Addr;
+use std::{default, net::Ipv4Addr};
 
 use arbitrary_int::{u13, u24, u3, u4};
 use bitarray::{
-    buffer::{self},
+    buffer::{self, Buffer, Error},
     serialize::{self, Deserialize, Serialize},
 };
 use bitarray_derive::{Deserialize, Serialize};
@@ -14,8 +14,14 @@ pub struct Prefix {
     version: u4,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Default)]
 pub struct Packet {
+    header: Header,
+    pub data: Vec<u8>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Header {
     ihl: u4,
     tos: u8,
     length: u16,
@@ -33,6 +39,44 @@ pub struct Packet {
 
     #[condition = "offset.value() > 0"]
     options: OptList,
+}
+
+impl Default for Header {
+    fn default() -> Self {
+        Self {
+            ihl: u4::new(0),
+            tos: 0,
+            length: 0,
+            ident: 0,
+            flags: u3::new(0),
+            offset: u13::new(0),
+            ttl: 0,
+            protocol: 0,
+            checksum: 0,
+            options: OptList::default(),
+            src: Ipv4Addr::new(0,0,0,0),
+            dst: Ipv4Addr::new(0,0,0,0),
+        }
+    }
+}
+
+impl Deserialize for Packet {
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    where
+        Self: Sized,
+    {
+        let (prefix, _) = Prefix::deserialize(buf)?;
+        match prefix.version.value() {
+            4 => {
+                let (header, header_l) = Header::deserialize(buf)?;
+                let data =
+                    buf.read_exact_n(header.length as usize - (header_l / buffer::BYTE_SIZE))?;
+                let data_l = data.len();
+                Ok((Self { header, data }, header_l + data_l))
+            }
+            _ => Ok((Self {..Default::default()}, 0))
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -138,7 +182,6 @@ pub mod tests {
 
     #[test]
     fn test_ip_packet_option_parsing() {
-        println!("{:016b}", 0u16 | 0x1d | 0x44 << 8);
         0x54;
         let raw: Vec<u8> = vec![
             0x0, 0x0, // tun_flags
@@ -159,17 +202,7 @@ pub mod tests {
 
         let mut buf = Buffer::from_vec(256, raw);
         buf.reset();
-
-        let (prefix, m) = Prefix::deserialize(&mut buf).unwrap();
-        println!("{:?}", prefix);
-
-        match prefix.version.value() {
-            4 => {
-                let (packet, _) = Packet::deserialize(&mut buf).unwrap();
-                println!("{:?}", packet);
-            }
-            _ => unimplemented!("ip version not implemented"),
-        }
+        let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
     }
 
     #[test]
@@ -185,16 +218,6 @@ pub mod tests {
 
         let mut buf = Buffer::from_vec(256, raw);
         buf.reset();
-
-        let (prefix, m) = Prefix::deserialize(&mut buf).unwrap();
-        println!("{:?}", prefix);
-
-        match prefix.version.value() {
-            4 => {
-                let (packet, _) = Packet::deserialize(&mut buf).unwrap();
-                println!("{:?}", packet);
-            }
-            _ => unimplemented!("ip version not implemented"),
-        }
+        let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
     }
 }

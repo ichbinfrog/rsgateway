@@ -40,8 +40,9 @@ impl Serialize for u13 {
 
 impl Deserialize for u13 {
     fn deserialize(buf: &mut crate::buffer::Buffer) -> Result<(Self, usize), crate::buffer::Error>
-        where
-            Self: Sized {
+    where
+        Self: Sized,
+    {
         buf.read_arbitrary_u16::<u13>()
     }
 }

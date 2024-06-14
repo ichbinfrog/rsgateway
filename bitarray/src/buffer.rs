@@ -1,11 +1,14 @@
 use std::{
     fmt::{Binary, Debug},
+    marker::PhantomData,
     ops::{Shl, Shr},
     string::FromUtf8Error,
 };
 
 use arbitrary_int::{u2, u3, u4, u5, u6, u7, Number};
 use num_traits::{AsPrimitive, FromBytes, PrimInt, ToBytes, Unsigned};
+
+pub const BYTE_SIZE: usize = 8;
 
 #[derive(Debug)]
 pub enum Error {
@@ -22,7 +25,7 @@ impl From<FromUtf8Error> for Error {
 
 #[derive(Debug)]
 pub struct Index {
-    pub(crate) pos: usize,
+    pub pos: usize,
     pub(crate) offset: usize,
     pub(crate) mask: u8,
 }
@@ -66,12 +69,10 @@ fn get_u8_mask(n: usize) -> u8 {
 }
 
 impl Buffer {
-    const BYTE: usize = 8;
-
     pub fn new(cap: usize) -> Self {
         Self {
             bit_size: cap,
-            data: vec![0u8; cap / Self::BYTE],
+            data: vec![0u8; cap / BYTE_SIZE],
             bit_cursor: 0,
         }
     }
@@ -87,6 +88,15 @@ impl Buffer {
 
     pub fn reset(&mut self) {
         self.bit_cursor = 0;
+    }
+
+    pub fn read_exact_n(&mut self, n: usize) -> Result<Vec<u8>, Error> {
+        let mut res: Vec<u8> = Vec::with_capacity(n);
+        for _ in 0..n {
+            let (v, _) = self.read_primitive::<u8, 1>()?;
+            res.push(v);
+        }
+        Ok(res)
     }
 
     fn set_bool(&mut self, i: usize, flag: bool) -> Result<Index, Error> {
@@ -123,7 +133,7 @@ impl Buffer {
     }
 
     fn coord(&self, n: usize) -> Index {
-        let offset = n % Self::BYTE;
+        let offset = n % BYTE_SIZE;
         let mask = match offset {
             0 => 0b10000000,
             1 => 0b01000000,
@@ -182,12 +192,12 @@ impl Buffer {
                 }
                 Index { pos, offset, .. } => {
                     self.data[pos] |= *v >> offset;
-                    self.data[pos + 1] |= *v << (Self::BYTE - offset);
+                    self.data[pos + 1] |= *v << (BYTE_SIZE - offset);
                 }
             }
-            self.bit_cursor += Self::BYTE;
+            self.bit_cursor += BYTE_SIZE;
         }
-        Ok(n * Self::BYTE)
+        Ok(n * BYTE_SIZE)
     }
 
     pub fn skip(&mut self, n: usize) -> Result<usize, Error> {
@@ -211,20 +221,26 @@ impl Buffer {
         Ok(T::BITS)
     }
 
-    pub fn push_arbitrary_u16<T: Number<UnderlyingType = u16> + Copy>(&mut self, raw: T) -> Result<usize, Error> {
+    pub fn push_arbitrary_u16<T: Number<UnderlyingType = u16> + Copy>(
+        &mut self,
+        raw: T,
+    ) -> Result<usize, Error> {
         let overflow = 16 - T::BITS;
         self.push_primitive(raw.value() << overflow)?;
         self.revert(overflow)?;
         Ok(T::BITS)
     }
 
-    pub fn push_arbitrary_u32<T: Number<UnderlyingType = u32> + Copy>(&mut self, raw: T) -> Result<usize, Error> {
+    pub fn push_arbitrary_u32<T: Number<UnderlyingType = u32> + Copy>(
+        &mut self,
+        raw: T,
+    ) -> Result<usize, Error> {
         let overflow = 32 - T::BITS;
         self.push_primitive(raw.value() << overflow)?;
         self.revert(overflow)?;
         Ok(T::BITS)
     }
- 
+
     pub fn read_arbitrary_u8<T>(&mut self) -> Result<(T, usize), Error>
     where
         T: Number<UnderlyingType = u8>,
@@ -244,7 +260,7 @@ impl Buffer {
         self.revert(overflow)?;
         Ok((T::new(res >> overflow), T::BITS))
     }
-     
+
     pub fn read_arbitrary_u32<T>(&mut self) -> Result<(T, usize), Error>
     where
         T: Number<UnderlyingType = u32>,
@@ -271,7 +287,7 @@ impl Buffer {
         u8: AsPrimitive<T>,
     {
         let n = std::mem::size_of::<T>();
-        let end = self.bit_cursor + (n * Self::BYTE);
+        let end = self.bit_cursor + (n * BYTE_SIZE);
         self.check_bounds(end)?;
 
         let mut res = T::zero();
@@ -282,7 +298,7 @@ impl Buffer {
             let index = self.coord(self.bit_cursor);
             match index {
                 Index { pos, offset: 0, .. } => {
-                    if self.bit_cursor + Self::BYTE > end {
+                    if self.bit_cursor + BYTE_SIZE > end {
                         let sh = end - self.bit_cursor;
                         let mask = match sh {
                             1 => 0b10000000,
@@ -295,24 +311,24 @@ impl Buffer {
                             8 => 0b11111111,
                             _ => unimplemented!("{}", sh),
                         };
-                        res = res | ((self.data[pos] & mask).as_() >> (Self::BYTE - sh));
+                        res = res | ((self.data[pos] & mask).as_() >> (BYTE_SIZE - sh));
                     } else {
-                        let sh = end - (self.bit_cursor + Self::BYTE);
+                        let sh = end - (self.bit_cursor + BYTE_SIZE);
                         res = res | (self.data[pos].as_() << sh);
                     }
                 }
                 Index { pos, offset, .. } => {
-                    let mask = get_u8_mask(Self::BYTE - n);
+                    let mask = get_u8_mask(BYTE_SIZE - n);
                     res = res
                         | ((self.data[pos] & mask).as_()
-                            << (end - (self.bit_cursor + Self::BYTE - offset)));
+                            << (end - (self.bit_cursor + BYTE_SIZE - offset)));
                 }
             }
             let diff = end - self.bit_cursor;
-            let step = if diff < Self::BYTE {
+            let step = if diff < BYTE_SIZE {
                 diff
             } else {
-                Self::BYTE - index.offset
+                BYTE_SIZE - index.offset
             };
             self.bit_cursor += step;
         }

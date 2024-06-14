@@ -1,6 +1,6 @@
 use bitarray::buffer::Buffer;
 use bitarray::serialize::Deserialize;
-use net::ip;
+use net::{ip, udp};
 use tun_tap::Iface;
 
 fn main() {
@@ -11,9 +11,17 @@ fn main() {
         // Configure the device ‒ set IP address on it, bring it up.
         let mut raw = vec![0; 128]; // MTU + 4 for the header
         iface.recv(&mut raw).unwrap();
+        
         let mut buf = Buffer::from_vec(512, raw);
         buf.reset();
-        let (res, m) = ip::Packet::deserialize(&mut buf).unwrap();
-        println!("{:?}", buf);
+
+        let (ip_p, ip_l) = ip::Packet::deserialize(&mut buf).unwrap();
+
+        if ip_l != 0 {
+            let mut data = Buffer::from_vec(512, ip_p.data);
+            data.reset();
+            let (udp_p, udp_l) = udp::Datagram::deserialize(&mut data).unwrap();
+            println!("{:?}", udp_p);   
+        }
     }
 }
