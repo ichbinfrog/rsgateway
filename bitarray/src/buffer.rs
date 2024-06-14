@@ -31,9 +31,9 @@ pub struct Index {
 }
 
 pub struct Buffer {
-    pub(crate) data: Vec<u8>,
+    pub data: Vec<u8>,
     bit_size: usize,
-    pub(crate) bit_cursor: usize,
+    pub bit_cursor: usize,
 }
 
 #[derive(Debug, PartialEq)]
