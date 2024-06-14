@@ -56,7 +56,8 @@ pub enum ResponseCode {
 }
 
 impl Deserialize for ResponseCode {
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    type Err = buffer::Error;
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
         where
             Self: Sized {
 
@@ -74,6 +75,7 @@ impl Deserialize for ResponseCode {
 }
 
 impl Serialize for ResponseCode {
+    type Err = buffer::Error;
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let res = match self {
             ResponseCode::FormatError => u3::new(1),
@@ -92,6 +94,7 @@ impl Serialize for ResponseCode {
 pub struct QName(String);
 
 impl Serialize for QName {
+    type Err = buffer::Error;
     fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut qname_l: usize = 0;
         for label in self.0.split('.') {

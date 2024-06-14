@@ -72,7 +72,8 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
     let expanded = quote! {
         impl #impl_generics serialize::Deserialize for #name #ty_generics #where_clause {
-            fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error> {
+            type Err = buffer::Error;
+            fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err> {
                 #deserialize
             }
         }
@@ -110,7 +111,8 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
 
     let expanded = quote! {
         impl #impl_generics serialize::Serialize for #name #ty_generics #where_clause {
-            fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+            type Err = buffer::Error;
+            fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, Self::Err> {
                 #write
             }
         }
@@ -127,28 +129,4 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         }
     }
     generics
-}
-
-fn parse_condition_attribute(attrs: Vec<syn::Attribute>) -> syn::Result<proc_macro::TokenStream> {
-    let attr = attrs.last().unwrap();
-    if !attr.path.is_ident("condition") {
-        return syn::Result::Err(syn::Error::new_spanned(
-            &attr.path,
-            "only the condition attribute is currently supported",
-        ));
-    }
-
-    let meta = attr.parse_meta()?;
-    match meta {
-        syn::Meta::NameValue(syn::MetaNameValue { lit, .. }) => {
-            return Ok(quote! {
-                if #lit {
-
-                }
-            }
-            .into())
-        }
-        _ => {}
-    }
-    Ok(quote! {}.into())
 }

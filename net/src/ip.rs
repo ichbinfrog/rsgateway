@@ -61,7 +61,8 @@ impl Default for Header {
 }
 
 impl Deserialize for Packet {
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+    type Err = buffer::Error;
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
     where
         Self: Sized,
     {
@@ -83,7 +84,8 @@ impl Deserialize for Packet {
 pub struct OptList(Vec<Opt>);
 
 impl Deserialize for OptList {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+    type Err = buffer::Error;
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
     where
         Self: Sized,
     {
@@ -135,7 +137,8 @@ pub enum Opt {
 }
 
 impl Deserialize for Opt {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+    type Err = buffer::Error;
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
     where
         Self: Sized,
     {

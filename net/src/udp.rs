@@ -20,7 +20,8 @@ pub struct Datagram {
 }
 
 impl Deserialize for Datagram {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+    type Err = buffer::Error;
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
     where
         Self: Sized,
     {

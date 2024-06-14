@@ -113,7 +113,8 @@ pub enum TcpOption {
 }
 
 impl Serialize for TcpOption {
-    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+    type Err = buffer::Error;
+    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, Self::Err> {
         match self {
             Self::End => 0u8.serialize(buf),
             Self::NoOp => 1u8.serialize(buf),
@@ -132,7 +133,8 @@ impl Serialize for TcpOption {
 struct TcpOptions(Vec<TcpOption>);
 
 impl Serialize for TcpOptions {
-    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+    type Err = buffer::Error;
+    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, Self::Err> {
         let mut n = 0;
         for opt in self.0.iter() {
             n += opt.serialize(buf)?;
