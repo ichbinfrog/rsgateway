@@ -104,6 +104,7 @@ dependencies = [
 name = "bitarray_derive"
 version = "0.1.0"
 dependencies = [
+ "proc-macro2 1.0.83",
  "quote 1.0.36",
  "syn 2.0.65",
 ]

@@ -1,13 +1,11 @@
-use bitarray::{
-    buffer::{self, Error, SizedString},
-    serialize::{self, Deserialize, Serialize},
-};
-use bitarray_derive::{Deserialize, Serialize};
-type DeserializeError = Error;
-type SerializeError = Error;
+use bitarray::buffer::{Buffer, Error, BYTE_SIZE};
+
+use bitarray::decode::Decoder;
+use bitarray::encode::Encoder;
+use bitarray_derive::{Decode, Encode};
 
 // An UDP Packet as defined in [RFC-768](https://datatracker.ietf.org/doc/html/rfc768)
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Decode, Encode, PartialEq, Debug)]
 pub struct Header {
     src: u16,
     dst: u16,
@@ -21,22 +19,22 @@ pub struct Datagram {
     pub data: Vec<u8>,
 }
 
-impl Deserialize for Datagram {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+impl Decoder for Datagram {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
-        let (header, header_l) = Header::deserialize(buf)?;
-        let data = buf.read_exact_n(header.length as usize - (header_l / buffer::BYTE_SIZE) - 1)?;
+        let (header, header_l) = Header::decode(buf)?;
+        let data = buf.read_exact_n(header.length as usize - (header_l / BYTE_SIZE) - 1)?;
         let data_l = data.len();
         Ok((Self { header, data }, header_l + data_l))
     }
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
-    use buffer::Buffer;
+    use Buffer;
 
     use crate::ip;
 
@@ -68,10 +66,10 @@ pub mod tests {
         let mut buf = Buffer::from_vec(raw);
         buf.reset();
 
-        let (ip_p, ip_l) = ip::Packet::deserialize(&mut buf).unwrap();
+        let (ip_p, ip_l) = ip::Packet::decode(&mut buf).unwrap();
         let mut data = Buffer::from_vec(ip_p.data);
         data.reset();
-        let (udp_p, udp_l) = Datagram::deserialize(&mut data).unwrap();
+        let (udp_p, udp_l) = Datagram::decode(&mut data).unwrap();
         assert_eq!(udp_p.data, "holla".as_bytes());
     }
 
@@ -84,10 +82,10 @@ pub mod tests {
             length: 32,
         };
         let mut buf = Buffer::new(252);
-        let n = header.serialize(&mut buf).unwrap();
+        let n = header.encode(&mut buf).unwrap();
         buf.reset();
 
-        let (res, m) = Header::deserialize(&mut buf).unwrap();
+        let (res, m) = Header::decode(&mut buf).unwrap();
         assert_eq!(n, m);
         assert_eq!(header, res);
     }

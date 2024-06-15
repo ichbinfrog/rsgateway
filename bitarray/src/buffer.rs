@@ -1,7 +1,5 @@
 use std::{
     fmt::{Binary, Debug},
-    marker::PhantomData,
-    ops::{Shl, Shr},
     string::FromUtf8Error,
 };
 
@@ -358,7 +356,7 @@ impl Buffer {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use arbitrary_int::{u13, u7};
     use rstest::*;

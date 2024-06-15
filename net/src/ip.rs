@@ -1,15 +1,13 @@
-use std::{default, net::Ipv4Addr};
+use std::net::Ipv4Addr;
 
 use arbitrary_int::{u13, u24, u3, u4};
-use bitarray::{
-    buffer::{self, Buffer, Error},
-    serialize::{self, Deserialize, Serialize},
-};
-use bitarray_derive::{Deserialize, Serialize};
-type DeserializeError = Error;
-type SerializeError = Error;
+use bitarray::buffer::{Buffer, Error, BYTE_SIZE};
 
-#[derive(Serialize, Deserialize, Debug)]
+use bitarray::decode::Decoder;
+use bitarray::encode::Encoder;
+use bitarray_derive::{Decode, Encode};
+
+#[derive(Encode, Decode, Debug)]
 pub struct Prefix {
     tun_flags: u16,
     tun_proto: u16,
@@ -22,7 +20,7 @@ pub struct Packet {
     pub data: Vec<u8>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Decode, Debug)]
 pub struct Header {
     ihl: u4,
     tos: u8,
@@ -62,17 +60,16 @@ impl Default for Header {
     }
 }
 
-impl Deserialize for Packet {
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), buffer::Error>
+impl Decoder for Packet {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
-        let (prefix, _) = Prefix::deserialize(buf)?;
+        let (prefix, _) = Prefix::decode(buf)?;
         match prefix.version.value() {
             4 => {
-                let (header, header_l) = Header::deserialize(buf)?;
-                let data =
-                    buf.read_exact_n(header.length as usize - (header_l / buffer::BYTE_SIZE))?;
+                let (header, header_l) = Header::decode(buf)?;
+                let data = buf.read_exact_n(header.length as usize - (header_l / BYTE_SIZE))?;
                 let data_l = data.len();
                 Ok((Self { header, data }, header_l + data_l))
             }
@@ -89,15 +86,15 @@ impl Deserialize for Packet {
 #[derive(Debug, Default)]
 pub struct OptList(Vec<Opt>);
 
-impl Deserialize for OptList {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+impl Decoder for OptList {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
         let mut res = Vec::<Opt>::new();
         let mut i = 0;
         loop {
-            let (opt, n) = Opt::deserialize(buf)?;
+            let (opt, n) = Opt::decode(buf)?;
             i += n;
             match opt {
                 Opt::EndOfList => {
@@ -141,8 +138,8 @@ pub enum Opt {
     },
 }
 
-impl Deserialize for Opt {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+impl Decoder for Opt {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -182,9 +179,7 @@ impl Deserialize for Opt {
 }
 
 #[cfg(test)]
-pub mod tests {
-    use buffer::Buffer;
-
+mod tests {
     use super::*;
 
     #[test]
@@ -209,7 +204,7 @@ pub mod tests {
 
         let mut buf = Buffer::from_vec(raw);
         buf.reset();
-        let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
+        let (ip_p, ip_l) = Packet::decode(&mut buf).unwrap();
     }
 
     #[test]
@@ -225,6 +220,6 @@ pub mod tests {
 
         let mut buf = Buffer::from_vec(raw);
         buf.reset();
-        let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
+        let (ip_p, ip_l) = Packet::decode(&mut buf).unwrap();
     }
 }

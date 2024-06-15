@@ -1,59 +1,27 @@
-use std::any::{Any, TypeId};
+mod decoder;
+mod encoder;
 
-use proc_macro::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
-use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{
     parenthesized, parse_macro_input, parse_quote, Data, DeriveInput, Expr, Fields, GenericParam,
-    Generics, Ident, Lifetime, Meta,
+    Generics,
 };
 
-#[proc_macro_derive(Deserialize, attributes(bitarray))]
-pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(Decode, attributes(bitarray))]
+pub fn decoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
 
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let deserialize = match input.data {
+    let decode = match input.data {
         Data::Struct(ref data) => match data.fields {
             Fields::Named(ref fields) => {
                 let recurse = fields.named.iter().map(|f| {
-                    let name = &f.ident;
-                    let ty = &f.ty;
-
-                    // TODO: split into separate func & struct
-                    let mut condition: Option<Expr> = None;
-                    if let Some(attr) = f.attrs.last() {
-                        if attr.path().is_ident("bitarray") {
-                            let _ = attr.parse_nested_meta(|meta| {
-                                if meta.path.is_ident("condition") {
-                                    let content;
-                                    parenthesized!(content in meta.input);
-                                    condition = Some(content.parse()?);
-                                }
-                                Ok(())
-                            });
-                        }
-                    }
-
-                    if let Some(condition) = condition {
-                        return quote_spanned! {f.span() =>
-                            let mut #name = #ty::default();
-                            if #condition {
-                                let (tmp, n) = #ty::deserialize(buf)?;
-                                #name = tmp;
-                                i += n;
-                            }
-                        };
-                    }
-
-                    quote_spanned! {f.span()=>
-                        let (#name, n) = #ty::deserialize(buf)?;
-                        i += n;
-                    }
+                    let config = decoder::Config::try_from(f).unwrap();
+                    config.quote(f).unwrap()
                 });
                 let sr = fields.named.iter().map(|f| {
                     let name = &f.ident;
@@ -76,9 +44,9 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     };
 
     let expanded = quote! {
-        impl #impl_generics serialize::Deserialize for #name #ty_generics #where_clause {
-            fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error> {
-                #deserialize
+        impl #impl_generics Decoder for #name #ty_generics #where_clause {
+            fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error> {
+                #decode
             }
         }
     };
@@ -87,8 +55,8 @@ pub fn derive_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     proc_macro::TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(Serialize, attributes(bitarray))]
-pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(Encode, attributes(bitarray))]
+pub fn encoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
 
@@ -101,7 +69,7 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                 let recurse = fields.named.iter().map(|f| {
                     let name = &f.ident;
                     quote_spanned! {f.span()=>
-                        self.#name.serialize(buf)?
+                        self.#name.encode(buf)?
                     }
                 });
                 quote! {
@@ -111,7 +79,6 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
             _ => unimplemented!(),
         },
         Data::Enum(ref data) => {
-            eprintln!("enum attributes {:?}", input.attrs);
             // TODO: split into separate func &struct
 
             let mut repr = None::<syn::Type>;
@@ -191,8 +158,8 @@ pub fn derive_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     };
 
     let expanded = quote! {
-        impl #impl_generics serialize::Serialize for #name #ty_generics #where_clause {
-            fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+        impl #impl_generics Encoder for #name #ty_generics #where_clause {
+            fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
                 #write
             }
         }

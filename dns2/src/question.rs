@@ -1,16 +1,9 @@
-use std::net::{Ipv4Addr, Ipv6Addr};
+use bitarray::buffer::{Buffer, Error};
 
-use bitarray::{
-    buffer::{self, Buffer, Error},
-    serialize::{self, Deserialize, Serialize},
-};
-use bitarray_derive::{Deserialize, Serialize};
-type DeserializeError = DnsError;
-type SerializeError = DnsError;
+use bitarray::encode::Encoder;
+use bitarray_derive::Encode;
 
-use crate::{error::DnsError, packet};
-
-#[derive(Debug, PartialEq, Copy, Clone, PartialOrd, Eq, Ord, Serialize)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd, Eq, Ord, Encode)]
 #[bitarray(repr(u16))]
 pub enum QuestionKind {
     A = 1,
@@ -22,22 +15,6 @@ pub enum QuestionKind {
     MX = 15,
     AAAA = 28,
 }
-
-// impl Serialize for QuestionKind {
-//     type Err = DnsError;
-//     fn serialize(&self, buf: &mut bitarray::buffer::Buffer) -> Result<usize, Self::Err> {
-//         let res: u16 = match self {
-//             Self::A => 1,
-//             Self::NS => 2,
-//             Self::CNAME => 5,
-//             Self::SOA => 6,
-//             Self::PTR => 12,
-//             Self::MX => 15,
-//             Self::AAAA => 28,
-//         };
-//         Ok(buf.push_primitive::<u16>(res)?)
-//     }
-// }
 
 // impl Deserialize for QuestionKind {
 //     type Err = DnsError;
@@ -62,7 +39,7 @@ pub enum QuestionKind {
 //     }
 // }
 
-#[derive(Debug, PartialEq, Copy, Clone, Serialize)]
+#[derive(Debug, PartialEq, Copy, Clone, Encode)]
 #[bitarray(repr(u16))]
 pub enum QuestionClass {
     IN = 1,
@@ -70,19 +47,6 @@ pub enum QuestionClass {
     CH = 3,
     HS = 4,
 }
-
-// impl Serialize for QuestionClass {
-//     type Err = DnsError;
-//     fn serialize(&self, buf: &mut bitarray::buffer::Buffer) -> Result<usize, Self::Err> {
-//         let res: u16 = match self {
-//             QuestionClass::IN => 1,
-//             QuestionClass::CS => 2,
-//             QuestionClass::CH => 3,
-//             QuestionClass::HS => 4,
-//         };
-//         Ok(buf.push_primitive(res)?)
-//     }
-// }
 
 // impl Deserialize for QuestionClass {
 //     type Err = DnsError;

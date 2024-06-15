@@ -294,7 +294,7 @@ fn get_double(cursor: &mut Cursor<&[u8]>) -> Result<f64, FrameError> {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use std::vec;
 
     use super::*;

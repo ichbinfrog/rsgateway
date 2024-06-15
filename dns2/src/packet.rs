@@ -1,11 +1,9 @@
 use arbitrary_int::{u14, u2, u3, u4, u6, Number};
-use bitarray::{
-    buffer::{self, Buffer, Error},
-    serialize::{self, Deserialize, Serialize},
-};
-use bitarray_derive::{Deserialize, Serialize};
+use bitarray::buffer::{Buffer, Error, BYTE_SIZE};
 
-use crate::error::DnsError;
+use bitarray::decode::Decoder;
+use bitarray::encode::Encoder;
+use bitarray_derive::{Decode, Encode};
 
 pub const MAX_BUF_SIZE: usize = 512;
 pub const MAX_LABEL_SIZE: usize = 63;
@@ -31,7 +29,7 @@ https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 
 */
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Encode, Decode)]
 pub struct Header {
     id: u16,
     qr: bool,
@@ -59,8 +57,8 @@ pub enum ResponseCode {
     Refused = 5,
 }
 
-impl Deserialize for ResponseCode {
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+impl Decoder for ResponseCode {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -77,8 +75,8 @@ impl Deserialize for ResponseCode {
     }
 }
 
-impl Serialize for ResponseCode {
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
+impl Encoder for ResponseCode {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let res = match self {
             ResponseCode::FormatError => u3::new(1),
             ResponseCode::ServerFail => u3::new(2),
@@ -94,8 +92,8 @@ impl Serialize for ResponseCode {
 #[derive(Debug, PartialEq)]
 pub struct QName(pub(crate) String);
 
-impl Serialize for QName {
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
+impl Encoder for QName {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut qname_l: usize = 0;
         for label in self.0.split('.') {
             let n = label.len();
@@ -111,7 +109,7 @@ impl Serialize for QName {
             if buf.is_aligned()? {
                 // udp packets are byte aligned so we can do this unsafe op
                 buf.data[index.pos..index.pos + n].copy_from_slice(label.as_bytes());
-                qname_l += buf.skip(n * buffer::BYTE_SIZE)?;
+                qname_l += buf.skip(n * BYTE_SIZE)?;
             }
         }
 
@@ -119,8 +117,8 @@ impl Serialize for QName {
     }
 }
 
-impl Deserialize for QName {
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
+impl Decoder for QName {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -140,7 +138,7 @@ impl Deserialize for QName {
             if jump.value() == jump_flag {
                 let (offset, _) = buf.read_arbitrary_u16::<u14>()?;
                 let offset = offset.value();
-                buf.seek(offset as usize * buffer::BYTE_SIZE);
+                buf.seek(offset as usize * BYTE_SIZE);
                 jumps += 1;
             } else {
                 let (len, _) = buf.read_arbitrary_u8::<u6>()?;
@@ -152,7 +150,7 @@ impl Deserialize for QName {
                 let pos = buf.pos()?.pos;
                 res.push_str(&String::from_utf8_lossy(&buf.data[pos..pos + len as usize]));
                 delimeter = ".";
-                buf.skip(buffer::BYTE_SIZE * len as usize)?;
+                buf.skip(BYTE_SIZE * len as usize)?;
             }
         }
 
@@ -162,6 +160,8 @@ impl Deserialize for QName {
 
 #[cfg(test)]
 mod tests {
+    use crate::error::DnsError;
+
     use super::*;
     use rstest::*;
 
@@ -192,7 +192,7 @@ mod tests {
         let mut buf = Buffer::from_vec(input.to_vec());
         buf.reset();
 
-        let (header, _) = Header::deserialize(&mut buf).unwrap();
+        let (header, _) = Header::decode(&mut buf).unwrap();
         assert_eq!(header, expected);
     }
 
@@ -243,15 +243,15 @@ mod tests {
     ) {
         let mut buf = Buffer::from_vec(input.to_vec());
         buf.reset();
-        let (first, _) = QName::deserialize(&mut buf).unwrap();
+        let (first, _) = QName::decode(&mut buf).unwrap();
         assert_eq!(first.0, first_expected.to_string());
 
-        buf.seek(first_offset * buffer::BYTE_SIZE);
-        let (second, _) = QName::deserialize(&mut buf).unwrap();
+        buf.seek(first_offset * BYTE_SIZE);
+        let (second, _) = QName::decode(&mut buf).unwrap();
         assert_eq!(second.0, second_expected.to_string());
 
-        buf.seek(second_offset * buffer::BYTE_SIZE);
-        let (third, _) = QName::deserialize(&mut buf).unwrap();
+        buf.seek(second_offset * BYTE_SIZE);
+        let (third, _) = QName::decode(&mut buf).unwrap();
         assert_eq!(third.0, third_expected.to_string());
     }
 
@@ -306,7 +306,7 @@ mod tests {
     fn test_qname_compression_edge_cases(#[case] input: &[u8], #[case] err: DnsError) {
         let mut buf = Buffer::from_vec(input.to_vec());
         buf.reset();
-        let res = QName::deserialize(&mut buf);
+        let res = QName::decode(&mut buf);
         // assert_eq!(res.unwrap_err(), err,);
     }
 }

@@ -1,11 +1,11 @@
-use bitarray::{
-    buffer,
-    serialize::{self, Deserialize, Serialize},
-};
-use bitarray_derive::Serialize;
+use bitarray::buffer::{Buffer, Error};
+
+use bitarray::decode::Decoder;
+use bitarray::encode::Encoder;
+use bitarray_derive::Encode;
 
 // A TCP Header as defined in [RFC-9293](https://datatracker.ietf.org/doc/html/rfc9293#section-3.1)
-#[derive(Default, Serialize, PartialEq, Debug)]
+#[derive(Default, Encode, PartialEq, Debug)]
 pub struct Header {
     src: u16,
     dst: u16,
@@ -30,47 +30,47 @@ pub struct Header {
     options: Option<TcpOptions>,
 }
 
-impl serialize::Deserialize for Header {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error> {
+impl Decoder for Header {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error> {
         let mut i = 0;
-        let (src, n) = u16::deserialize(buf)?;
+        let (src, n) = u16::decode(buf)?;
         i += n;
-        let (dst, n) = u16::deserialize(buf)?;
+        let (dst, n) = u16::decode(buf)?;
         i += n;
-        let (seq_num, n) = u32::deserialize(buf)?;
+        let (seq_num, n) = u32::decode(buf)?;
         i += n;
-        let (ack_num, n) = u32::deserialize(buf)?;
+        let (ack_num, n) = u32::decode(buf)?;
         i += n;
-        let (offset, n) = u8::deserialize(buf)?;
+        let (offset, n) = u8::decode(buf)?;
         i += n;
-        let (reserved, n) = u8::deserialize(buf)?;
+        let (reserved, n) = u8::decode(buf)?;
         i += n;
-        let (cwr, n) = bool::deserialize(buf)?;
+        let (cwr, n) = bool::decode(buf)?;
         i += n;
-        let (ece, n) = bool::deserialize(buf)?;
+        let (ece, n) = bool::decode(buf)?;
         i += n;
-        let (urg, n) = bool::deserialize(buf)?;
+        let (urg, n) = bool::decode(buf)?;
         i += n;
-        let (ack, n) = bool::deserialize(buf)?;
+        let (ack, n) = bool::decode(buf)?;
         i += n;
-        let (psh, n) = bool::deserialize(buf)?;
+        let (psh, n) = bool::decode(buf)?;
         i += n;
-        let (rst, n) = bool::deserialize(buf)?;
+        let (rst, n) = bool::decode(buf)?;
         i += n;
-        let (syn, n) = bool::deserialize(buf)?;
+        let (syn, n) = bool::decode(buf)?;
         i += n;
-        let (fin, n) = bool::deserialize(buf)?;
+        let (fin, n) = bool::decode(buf)?;
         i += n;
-        let (window, n) = u16::deserialize(buf)?;
+        let (window, n) = u16::decode(buf)?;
         i += n;
-        let (checksum, n) = u16::deserialize(buf)?;
+        let (checksum, n) = u16::decode(buf)?;
         i += n;
-        let (urgent, n) = u16::deserialize(buf)?;
+        let (urgent, n) = u16::decode(buf)?;
         i += n;
 
         let mut options: Option<TcpOptions> = None;
         if offset > 5 {
-            let (opts, n) = TcpOptions::deserialize(buf)?;
+            let (opts, n) = TcpOptions::decode(buf)?;
             i += n;
             options = Some(opts);
         }
@@ -112,16 +112,16 @@ pub enum TcpOption {
     },
 }
 
-impl Serialize for TcpOption {
-    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+impl Encoder for TcpOption {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         match self {
-            Self::End => 0u8.serialize(buf),
-            Self::NoOp => 1u8.serialize(buf),
+            Self::End => 0u8.encode(buf),
+            Self::NoOp => 1u8.encode(buf),
             Self::MSS { length, mss } => {
                 let mut n = 0;
-                n += 2u8.serialize(buf)?;
-                n += length.serialize(buf)?;
-                n += mss.serialize(buf)?;
+                n += 2u8.encode(buf)?;
+                n += length.encode(buf)?;
+                n += mss.encode(buf)?;
                 Ok(n)
             }
         }
@@ -131,18 +131,18 @@ impl Serialize for TcpOption {
 #[derive(Debug, Default, PartialEq)]
 struct TcpOptions(Vec<TcpOption>);
 
-impl Serialize for TcpOptions {
-    fn serialize(&self, buf: &mut buffer::Buffer) -> Result<usize, buffer::Error> {
+impl Encoder for TcpOptions {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut n = 0;
         for opt in self.0.iter() {
-            n += opt.serialize(buf)?;
+            n += opt.encode(buf)?;
         }
         Ok(n)
     }
 }
 
-impl Deserialize for TcpOptions {
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
+impl Decoder for TcpOptions {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -150,7 +150,7 @@ impl Deserialize for TcpOptions {
         let mut options: Vec<TcpOption> = Vec::new();
 
         loop {
-            let (op_code, i) = u8::deserialize(buf)?;
+            let (op_code, i) = u8::decode(buf)?;
             n += i;
 
             match op_code {
@@ -162,9 +162,9 @@ impl Deserialize for TcpOptions {
                     options.push(TcpOption::NoOp);
                 }
                 2 => {
-                    let (length, i) = u8::deserialize(buf)?;
+                    let (length, i) = u8::decode(buf)?;
                     n += i;
-                    let (mss, i) = u16::deserialize(buf)?;
+                    let (mss, i) = u16::decode(buf)?;
                     n += i;
                     options.push(TcpOption::MSS { length, mss });
                 }
@@ -175,15 +175,9 @@ impl Deserialize for TcpOptions {
 }
 
 #[cfg(test)]
-pub mod tests {
-    use bitarray::{
-        buffer,
-        serialize::{Deserialize, Serialize},
-    };
-
+mod tests {
+    use super::*;
     use crate::frame::{TcpOption, TcpOptions};
-
-    use super::Header;
 
     #[test]
     fn test_serialization() {
@@ -202,11 +196,11 @@ pub mod tests {
             ])),
             ..Default::default()
         };
-        let mut buf = buffer::Buffer::new(258);
-        let n = header.serialize(&mut buf).unwrap();
+        let mut buf = Buffer::new(258);
+        let n = header.encode(&mut buf).unwrap();
         buf.reset();
 
-        let (res, m) = Header::deserialize(&mut buf).unwrap();
+        let (res, m) = Header::decode(&mut buf).unwrap();
         assert_eq!(n, m);
         assert_eq!(res, header)
     }

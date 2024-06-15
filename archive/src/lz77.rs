@@ -236,7 +236,7 @@ impl<'a> Buffer<'a> {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
     use super::find;
     use rstest::*;

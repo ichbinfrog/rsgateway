@@ -609,7 +609,7 @@ impl Node {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
     use crate::error::ParserError;
     use std::io::Cursor;

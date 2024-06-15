@@ -1,5 +1,5 @@
 use bitarray::buffer::Buffer;
-use bitarray::serialize::Deserialize;
+use bitarray::decode::Decoder;
 use net::{ip, udp};
 use tun_tap::Iface;
 
@@ -15,12 +15,12 @@ fn main() {
         let mut buf = Buffer::from_vec(raw);
         buf.reset();
 
-        let (ip_p, ip_l) = ip::Packet::deserialize(&mut buf).unwrap();
+        let (ip_p, ip_l) = ip::Packet::decode(&mut buf).unwrap();
 
         if ip_l != 0 {
             let mut data = Buffer::from_vec(ip_p.data);
             data.reset();
-            let (udp_p, udp_l) = udp::Datagram::deserialize(&mut data).unwrap();
+            let (udp_p, udp_l) = udp::Datagram::decode(&mut data).unwrap();
             println!("{:?}", udp_p);
         }
     }
