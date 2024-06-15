@@ -1,18 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::quote_spanned;
-use syn::{parenthesized, spanned::Spanned, Error, Expr, Field, FieldsNamed};
+use syn::{parenthesized, spanned::Spanned, Error, Expr, Field};
 
 pub struct Config {
-    pub condition: Option<Expr>
+    pub condition: Option<Expr>,
 }
 
 impl<'a> TryFrom<&'a Field> for Config {
     type Error = Error;
 
     fn try_from(f: &'a Field) -> Result<Self, Self::Error> {
-        let mut config = Config {
-            condition: None,
-        };
+        let mut config = Config { condition: None };
 
         for attr in f.attrs.iter() {
             if attr.path().is_ident("bitarray") {
@@ -35,7 +33,7 @@ impl Config {
     pub fn quote(&self, f: &Field) -> Result<TokenStream, Error> {
         let name = &f.ident;
         let ty = &f.ty;
-        
+
         if let Some(condition) = &self.condition {
             Ok(quote_spanned! {f.span() =>
                     let mut #name = #ty::default();
@@ -51,6 +49,5 @@ impl Config {
                     i += n;
             })
         }
-
     }
 }

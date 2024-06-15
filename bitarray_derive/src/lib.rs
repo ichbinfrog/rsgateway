@@ -1,12 +1,9 @@
 mod decoder;
 mod encoder;
 
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{
-    parenthesized, parse_macro_input, parse_quote, Data, DeriveInput, Expr, Fields, GenericParam,
-    Generics,
-};
+use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics};
 
 #[proc_macro_derive(Decode, attributes(bitarray))]
 pub fn decoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
