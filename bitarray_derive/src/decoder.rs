@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote_spanned;
-use syn::{parenthesized, spanned::Spanned, Error, Expr, Field};
+use syn::{parenthesized, spanned::Spanned, Error, Expr, Field, FieldsNamed};
 
 pub struct Config {
     pub condition: Option<Expr>

@@ -51,7 +51,6 @@ pub fn decoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    // Hand the output tokens back to the compiler.
     proc_macro::TokenStream::from(expanded)
 }
 
@@ -79,80 +78,10 @@ pub fn encoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             _ => unimplemented!(),
         },
         Data::Enum(ref data) => {
-            // TODO: split into separate func &struct
-
-            let mut repr = None::<syn::Type>;
-            if let Some(attr) = input.attrs.last() {
-                if attr.path().is_ident("bitarray") {
-                    let _ = attr.parse_nested_meta(|meta| {
-                        if meta.path.is_ident("repr") {
-                            let content;
-                            parenthesized!(content in meta.input);
-                            repr = Some(content.parse()?);
-                        }
-                        Ok(())
-                    });
-                }
-            }
-
-            if repr.is_none() {
-                panic!("Serialization with enums require explicit repr definition")
-            }
-            let repr = repr.unwrap();
-
-            let recurse = data.variants.iter().map(|v| {
-                match v.fields {
-                    Fields::Named(ref fields) => {
-                        for field in fields.named.iter() {
-                            eprintln!("{:?}", field.ident);
-                        }
-                    },
-                    Fields::Unit => {
-                        match &v.discriminant {
-                            Some((_, expr)) => {
-                                match expr {
-                                    syn::Expr::Lit(lit) => {
-                                        match lit.lit {
-                                            syn::Lit::Int(ref i) => {
-                                                let value = i.base10_parse::<usize>().unwrap();
-                                                let ident = &v.ident;
-                                                match repr.clone().into_token_stream().to_string().as_str() {
-                                                    "u8" | "u16" | "u32" | "u64" | "u128" => {
-                                                        return quote_spanned! {v.span() => 
-                                                            #name::#ident => #value as #repr,
-                                                        };
-                                                    },
-                                                    s if s.starts_with("u") => {
-                                                        return quote_spanned! {v.span() => 
-                                                            #name::#ident => arbitrary_int::#repr::new(#value),
-                                                        };
-                                                    }
-                                                    _ => {
-                                                        unimplemented!("only unsigned representations of enums are available")
-                                                    }
-                                                }
-                                            },
-                                            _ => {}
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            },
-                            _ => {}
-                        };
-                    },
-                    Fields::Unnamed(_) => unimplemented!("unamed enum not implemented")
-                }
-                quote!{}
-            });
-            quote! {
-                let res: #repr = match self {
-                    #(#recurse)*
-                };
-                Ok(buf.push_primitive::<#repr>(res)?)
-            }
+            let config = encoder::Config::try_from(input.attrs).unwrap();
+            config.generate_unit(&data.variants, &name)
         }
-        Data::Union(ref data) => {
+        Data::Union(_) => {
             unimplemented!("union deserialization not implemented")
         }
     };
@@ -165,14 +94,13 @@ pub fn encoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    // Hand the output tokens back to the compiler.
     proc_macro::TokenStream::from(expanded)
 }
 
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(Serialize));
+            type_param.bounds.push(parse_quote!(Decoder));
         }
     }
     generics
