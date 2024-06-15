@@ -104,8 +104,8 @@ dependencies = [
 name = "bitarray_derive"
 version = "0.1.0"
 dependencies = [
- "quote 0.6.13",
- "syn 0.15.44",
+ "quote 1.0.36",
+ "syn 2.0.65",
 ]
 
 [[package]]

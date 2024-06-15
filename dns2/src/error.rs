@@ -11,6 +11,10 @@ pub enum DnsError {
         subject: &'static str,
     },
     IOError(buffer::Error),
+    Unimplemented {
+        sub: &'static str,
+        reason: &'static str,
+    },
 }
 
 impl From<buffer::Error> for DnsError {

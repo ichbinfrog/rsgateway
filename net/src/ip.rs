@@ -6,6 +6,8 @@ use bitarray::{
     serialize::{self, Deserialize, Serialize},
 };
 use bitarray_derive::{Deserialize, Serialize};
+type DeserializeError = Error;
+type SerializeError = Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Prefix {
@@ -37,7 +39,7 @@ pub struct Header {
     src: Ipv4Addr,
     dst: Ipv4Addr,
 
-    #[condition = "offset.value() > 0"]
+    #[bitarray(condition(offset.value() > 0))]
     options: OptList,
 }
 
@@ -54,15 +56,14 @@ impl Default for Header {
             protocol: 0,
             checksum: 0,
             options: OptList::default(),
-            src: Ipv4Addr::new(0,0,0,0),
-            dst: Ipv4Addr::new(0,0,0,0),
+            src: Ipv4Addr::new(0, 0, 0, 0),
+            dst: Ipv4Addr::new(0, 0, 0, 0),
         }
     }
 }
 
 impl Deserialize for Packet {
-    type Err = buffer::Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), buffer::Error>
     where
         Self: Sized,
     {
@@ -75,7 +76,12 @@ impl Deserialize for Packet {
                 let data_l = data.len();
                 Ok((Self { header, data }, header_l + data_l))
             }
-            _ => Ok((Self {..Default::default()}, 0))
+            _ => Ok((
+                Self {
+                    ..Default::default()
+                },
+                0,
+            )),
         }
     }
 }
@@ -84,8 +90,7 @@ impl Deserialize for Packet {
 pub struct OptList(Vec<Opt>);
 
 impl Deserialize for OptList {
-    type Err = buffer::Error;
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
     where
         Self: Sized,
     {
@@ -137,8 +142,7 @@ pub enum Opt {
 }
 
 impl Deserialize for Opt {
-    type Err = buffer::Error;
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
     where
         Self: Sized,
     {
@@ -203,7 +207,7 @@ pub mod tests {
             0x0, // eol
         ];
 
-        let mut buf = Buffer::from_vec(256, raw);
+        let mut buf = Buffer::from_vec(raw);
         buf.reset();
         let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
     }
@@ -219,7 +223,7 @@ pub mod tests {
             0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
         ];
 
-        let mut buf = Buffer::from_vec(256, raw);
+        let mut buf = Buffer::from_vec(raw);
         buf.reset();
         let (ip_p, ip_l) = Packet::deserialize(&mut buf).unwrap();
     }

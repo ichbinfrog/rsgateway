@@ -15,6 +15,7 @@ pub enum Error {
     OutOfRange { size: usize, pos: usize },
     Overflow { size: usize, max: usize },
     Utf8Error(FromUtf8Error),
+    Custom { reason: String },
 }
 
 impl From<FromUtf8Error> for Error {
@@ -150,7 +151,7 @@ impl Buffer {
         };
 
         let pos = n / 8;
-        if pos >= self.byte_size  {
+        if pos >= self.byte_size {
             Err(Error::OutOfRange {
                 size: self.byte_size,
                 pos: n,
@@ -167,7 +168,7 @@ impl Buffer {
     pub fn seek(&mut self, n: usize) {
         self.bit_cursor = n;
     }
- 
+
     pub fn is_aligned(&self) -> Result<bool, Error> {
         Ok(self.pos()?.offset == 0)
     }

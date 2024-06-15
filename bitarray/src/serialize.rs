@@ -5,27 +5,23 @@ use num_traits::Pow;
 use crate::buffer::{Buffer, Error, SizedString};
 
 pub trait Serialize {
-    type Err;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err>;
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error>;
 }
 
 pub trait Deserialize {
-    type Err;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized;
 }
 
 impl Serialize for Ipv4Addr {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         self.to_bits().serialize(buf)
     }
 }
 
 impl Deserialize for Ipv4Addr {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -34,10 +30,8 @@ impl Deserialize for Ipv4Addr {
     }
 }
 
-impl<T: Serialize> Serialize for Vec<T> 
-where Error: From<<T as Serialize>::Err> {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+impl<T: Serialize> Serialize for Vec<T> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut n = 0;
         for v in self.iter() {
             n += v.serialize(buf)?;
@@ -46,10 +40,8 @@ where Error: From<<T as Serialize>::Err> {
     }
 }
 
-impl<T: Serialize> Serialize for Option<T> 
-where Error: From<<T as Serialize>::Err> {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+impl<T: Serialize> Serialize for Option<T> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         match self {
             Some(x) => Ok(x.serialize(buf)?),
             None => Ok(0),
@@ -57,10 +49,8 @@ where Error: From<<T as Serialize>::Err> {
     }
 }
 
-impl<T: Deserialize> Deserialize for Option<T> 
-where Error: From<<T as Deserialize>::Err> {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+impl<T: Deserialize> Deserialize for Option<T> {
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -70,8 +60,7 @@ where Error: From<<T as Deserialize>::Err> {
 }
 
 impl Serialize for String {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let mut i: usize = 0;
 
         for b in self.bytes() {
@@ -88,8 +77,7 @@ impl Serialize for String {
 }
 
 impl<const N: usize> Deserialize for SizedString<N> {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -126,8 +114,7 @@ impl<const N: usize> Deserialize for SizedString<N> {
 }
 
 impl<const N: usize> Serialize for SizedString<N> {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         let n = self.0.len();
         if n >= 2.pow(4 * N) as usize {
             return Err(Error::Overflow {
@@ -160,14 +147,12 @@ impl<const N: usize> Serialize for SizedString<N> {
 }
 
 impl Serialize for u8 {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_primitive(*self)
     }
 }
 impl Deserialize for u8 {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -176,15 +161,13 @@ impl Deserialize for u8 {
 }
 
 impl Serialize for u16 {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_primitive(*self)
     }
 }
 
 impl Deserialize for u16 {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -193,14 +176,12 @@ impl Deserialize for u16 {
 }
 
 impl Serialize for u32 {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_primitive(*self)
     }
 }
 impl Deserialize for u32 {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -209,14 +190,12 @@ impl Deserialize for u32 {
 }
 
 impl Serialize for u64 {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_primitive(*self)
     }
 }
 impl Deserialize for u64 {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {
@@ -225,14 +204,12 @@ impl Deserialize for u64 {
 }
 
 impl Serialize for bool {
-    type Err = Error;
-    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Self::Err> {
+    fn serialize(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_bool(*self)
     }
 }
 impl Deserialize for bool {
-    type Err = Error;
-    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut Buffer) -> Result<(Self, usize), Error>
     where
         Self: Sized,
     {

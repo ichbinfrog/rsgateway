@@ -1,8 +1,10 @@
 use bitarray::{
-    buffer::{self, SizedString},
+    buffer::{self, Error, SizedString},
     serialize::{self, Deserialize, Serialize},
 };
 use bitarray_derive::{Deserialize, Serialize};
+type DeserializeError = Error;
+type SerializeError = Error;
 
 // An UDP Packet as defined in [RFC-768](https://datatracker.ietf.org/doc/html/rfc768)
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -20,8 +22,7 @@ pub struct Datagram {
 }
 
 impl Deserialize for Datagram {
-    type Err = buffer::Error;
-    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), Self::Err>
+    fn deserialize(buf: &mut buffer::Buffer) -> Result<(Self, usize), buffer::Error>
     where
         Self: Sized,
     {
@@ -64,16 +65,16 @@ pub mod tests {
             0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
             0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         ];
-        let mut buf = Buffer::from_vec(512, raw);
+        let mut buf = Buffer::from_vec(raw);
         buf.reset();
 
         let (ip_p, ip_l) = ip::Packet::deserialize(&mut buf).unwrap();
-        let mut data = Buffer::from_vec(512, ip_p.data);
+        let mut data = Buffer::from_vec(ip_p.data);
         data.reset();
         let (udp_p, udp_l) = Datagram::deserialize(&mut data).unwrap();
         assert_eq!(udp_p.data, "holla".as_bytes());
     }
-    
+
     #[test]
     fn test_udp_serialization() {
         let header = Header {

@@ -398,7 +398,7 @@ mod tests {
     async fn test_header_write(#[case] input: Header) {
         let mut pb = PacketBuffer::default();
         assert!(input.write(&mut pb).await.is_ok());
-        pb.pos = 0;            
+        pb.pos = 0;
         assert!(Header::try_from(&mut pb).is_ok_and(|x| x == input));
     }
 

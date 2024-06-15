@@ -11,17 +11,17 @@ fn main() {
         // Configure the device ‒ set IP address on it, bring it up.
         let mut raw = vec![0; 128]; // MTU + 4 for the header
         iface.recv(&mut raw).unwrap();
-        
-        let mut buf = Buffer::from_vec(512, raw);
+
+        let mut buf = Buffer::from_vec(raw);
         buf.reset();
 
         let (ip_p, ip_l) = ip::Packet::deserialize(&mut buf).unwrap();
 
         if ip_l != 0 {
-            let mut data = Buffer::from_vec(512, ip_p.data);
+            let mut data = Buffer::from_vec(ip_p.data);
             data.reset();
             let (udp_p, udp_l) = udp::Datagram::deserialize(&mut data).unwrap();
-            println!("{:?}", udp_p);   
+            println!("{:?}", udp_p);
         }
     }
 }
