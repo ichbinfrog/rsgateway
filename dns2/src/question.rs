@@ -1,9 +1,10 @@
 use bitarray::buffer::{Buffer, Error};
 
 use bitarray::encode::Encoder;
-use bitarray_derive::Encode;
+use bitarray::decode::Decoder;
+use bitarray_derive::{Decode, Encode};
 
-#[derive(Debug, PartialEq, Copy, Clone, PartialOrd, Eq, Ord, Encode)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd, Eq, Ord, Encode, Decode)]
 #[bitarray(repr(u16))]
 pub enum QuestionKind {
     A = 1,
@@ -16,29 +17,6 @@ pub enum QuestionKind {
     AAAA = 28,
 }
 
-// impl Deserialize for QuestionKind {
-//     type Err = DnsError;
-//     fn deserialize(buf: &mut bitarray::buffer::Buffer) -> Result<(Self, usize), Self::Err>
-//     where
-//         Self: Sized,
-//     {
-//         let (kind, kind_l) = buf.read_primitive::<u16, 2>()?;
-//         match kind {
-//             1 => Ok((Self::A, kind_l)),
-//             2 => Ok((Self::NS, kind_l)),
-//             5 => Ok((Self::CNAME, kind_l)),
-//             6 => Ok((Self::SOA, kind_l)),
-//             12 => Ok((Self::PTR, kind_l)),
-//             15 => Ok((Self::MX, kind_l)),
-//             28 => Ok((Self::AAAA, kind_l)),
-//             _ => Err(DnsError::Unimplemented {
-//                 sub: "question_kind",
-//                 reason: "unknown question kind",
-//             }),
-//         }
-//     }
-// }
-
 #[derive(Debug, PartialEq, Copy, Clone, Encode)]
 #[bitarray(repr(u16))]
 pub enum QuestionClass {
@@ -47,26 +25,6 @@ pub enum QuestionClass {
     CH = 3,
     HS = 4,
 }
-
-// impl Deserialize for QuestionClass {
-//     type Err = DnsError;
-//     fn deserialize(buf: &mut bitarray::buffer::Buffer) -> Result<(Self, usize), Self::Err>
-//     where
-//         Self: Sized,
-//     {
-//         let (class, class_l) = buf.read_primitive::<u16, 2>()?;
-//         match class {
-//             1 => Ok((QuestionClass::IN, class_l)),
-//             2 => Ok((QuestionClass::CS, class_l)),
-//             3 => Ok((QuestionClass::CH, class_l)),
-//             4 => Ok((QuestionClass::HS, class_l)),
-//             _ => Err(DnsError::Unimplemented {
-//                 sub: "question_class",
-//                 reason: "unimplemented question class",
-//             }),
-//         }
-//     }
-// }
 
 // #[derive(Debug, PartialEq, Serialize)]
 // pub enum Record {

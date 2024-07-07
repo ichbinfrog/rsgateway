@@ -37,6 +37,10 @@ pub fn decoder(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
             _ => unimplemented!(),
         },
+        Data::Enum(ref data) => {
+            let config = decoder::Config::try_from(input.attrs).unwrap();
+            config.generate_unit(&data.variants, &name)
+        }
         _ => unimplemented!(),
     };
 

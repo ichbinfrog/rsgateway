@@ -46,23 +46,24 @@ impl Config {
         name: &Ident,
     ) -> TokenStream {
         let repr = &self.repr;
+        let repr_str = repr.clone().into_token_stream().to_string();
+
         let recurse = variants.iter().map(|v| {
             if let Fields::Unit = v.fields {
                 match v.discriminant {
                     Some((_, ref expr)) => {
                         if let Expr::Lit(ref expr_lit) = expr {
                             if let syn::Lit::Int(ref int) = expr_lit.lit {
-                                let value = int.base10_parse::<usize>().unwrap();
                                 let ident = &v.ident;
-                                match repr.clone().into_token_stream().to_string().as_str() {
+                                match repr_str.as_str() {
                                     "u8" | "u16" | "u32" | "u64" | "u128" => {
                                         return quote_spanned! {v.span() =>
-                                            #name::#ident => #value as #repr,
+                                            #name::#ident => #int,
                                         }
                                     }
                                     s if s.starts_with("u") => {
                                         return quote_spanned! {v.span() =>
-                                            #name::#ident => arbitrary_int::#repr::new(#value),
+                                            #name::#ident => arbitrary_int::#repr::new(#int),
                                         }
                                     }
                                     _ => {
