@@ -1,6 +1,9 @@
 use proc_macro2::TokenStream;
-use quote::{quote_spanned, ToTokens, quote};
-use syn::{parenthesized, punctuated::Punctuated, spanned::Spanned, token::{Comma}, Type, Attribute, Error, Expr, Field, Fields, Ident, Variant};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{
+    parenthesized, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Error, Expr,
+    Field, Fields, Ident, Type, Variant,
+};
 
 #[derive(Debug)]
 pub struct Config {
@@ -25,14 +28,15 @@ impl TryFrom<Vec<Attribute>> for Config {
 
                     Ok(())
                 }) {
-                    Err(e) => {
-                        return Err(Error::new(attr.span(), e))
-                    },
+                    Err(e) => return Err(Error::new(attr.span(), e)),
                     _ => break,
                 }
             }
         }
-        Ok(Config { repr, condition: None })
+        Ok(Config {
+            repr,
+            condition: None,
+        })
     }
 }
 
@@ -40,7 +44,10 @@ impl<'a> TryFrom<&'a Field> for Config {
     type Error = Error;
 
     fn try_from(f: &'a Field) -> Result<Self, Self::Error> {
-        let mut config = Config { condition: None, repr: None };
+        let mut config = Config {
+            condition: None,
+            repr: None,
+        };
 
         for attr in f.attrs.iter() {
             if attr.path().is_ident("bitarray") {
@@ -126,28 +133,27 @@ impl Config {
         };
 
         let recurse = variants.iter().map(|v| {
-            if let Fields::Unit = v.fields {
-                match v.discriminant {
+            match v.fields {
+                Fields::Unit => match v.discriminant {
                     Some((_, ref expr)) => {
                         if let Expr::Lit(ref expr_lit) = expr {
                             if let syn::Lit::Int(ref int) = expr_lit.lit {
                                 let ident = &v.ident;
 
                                 return quote_spanned! {
-                                    v.span() => 
+                                    v.span() =>
                                         #int => Ok((#name::#ident, kind_l)),
                                 };
+                            }
                         }
                     }
-                }
-                    _ => {
-                        unimplemented!("derive not implemented")
-                    }
-                }
+                    _ => {}
+                },
+                _ => {}
             }
             unimplemented!("derive not implemented")
         });
-        
+
         quote! {
             #read
             match kind {

@@ -1,4 +1,4 @@
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use num_traits::Pow;
 
@@ -8,6 +8,12 @@ pub trait Encoder {
     fn encode(&self, buf: &mut Buffer) -> Result<usize, Error>;
 }
 impl Encoder for Ipv4Addr {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
+        self.to_bits().encode(buf)
+    }
+}
+
+impl Encoder for Ipv6Addr {
     fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         self.to_bits().encode(buf)
     }
@@ -100,6 +106,12 @@ impl Encoder for u32 {
 }
 
 impl Encoder for u64 {
+    fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
+        buf.push_primitive(*self)
+    }
+}
+
+impl Encoder for u128 {
     fn encode(&self, buf: &mut Buffer) -> Result<usize, Error> {
         buf.push_primitive(*self)
     }

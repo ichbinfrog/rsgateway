@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parenthesized, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Error, Expr,
-    Fields, Ident, Type, Variant,
+    Fields, Ident, LitInt, Type, Variant,
 };
 
 #[derive(Debug, Clone)]
@@ -49,8 +49,8 @@ impl Config {
         let repr_str = repr.clone().into_token_stream().to_string();
 
         let recurse = variants.iter().map(|v| {
-            if let Fields::Unit = v.fields {
-                match v.discriminant {
+            match v.fields {
+                Fields::Unit => match v.discriminant {
                     Some((_, ref expr)) => {
                         if let Expr::Lit(ref expr_lit) = expr {
                             if let syn::Lit::Int(ref int) = expr_lit.lit {
@@ -58,7 +58,7 @@ impl Config {
                                 match repr_str.as_str() {
                                     "u8" | "u16" | "u32" | "u64" | "u128" => {
                                         return quote_spanned! {v.span() =>
-                                            #name::#ident => #int,
+                                            #name::#ident => Ok(buf.push_primitive::<#repr>(#int)?),
                                         }
                                     }
                                     s if s.starts_with("u") => {
@@ -74,18 +74,58 @@ impl Config {
                                 }
                             }
                         }
+                        unimplemented!("derive not implemented");
                     }
-                    _ => {}
+                    _ => {
+                        unimplemented!("derive not implemented");
+                    }
+                },
+                Fields::Named(ref fields) => {
+                    // let mut arm: Option<&LitInt> = None;
+                    // match v.discriminant {
+                    //     Some((_, ref expr)) => {
+                    //         if let Expr::Lit(ref expr_lit) = expr {
+                    //             if let syn::Lit::Int(ref integer) = expr_lit.lit {
+                    //                 arm = Some(integer)
+                    //             }
+                    //         }
+                    //     }
+                    //     _ => {}
+                    // }
+                    // if arm.is_none() {
+                    //     unimplemented!("requires discriminant")
+                    // }
+                    // let arm = arm.unwrap();
+                    let variant = &v.ident;
+                    let nested = fields.named.iter().map(|f| {
+                        let ident = f.ident.clone().unwrap();
+                        quote_spanned! {v.span() =>
+                            #ident
+                        }
+                    });
+
+                    let nested_clone = nested.clone();
+                    let fields_name = quote! {
+                        #(#nested_clone,)*
+                    };
+                    return quote! {
+                        #name::#variant { #fields_name } => Ok(
+                            0 #(+ #nested.encode(buf)?)*
+                        ),
+                    };
+                }
+                _ => {
+                    unimplemented!("derive not implemented");
                 }
             }
-            unimplemented!("derive not implemented")
         });
 
-        quote! {
-            let res: #repr = match self {
+        let res = quote! {
+            match self {
                 #(#recurse)*
-            };
-            Ok(buf.push_primitive::<#repr>(res)?)
-        }
+            }
+        };
+        eprintln!("{:?}", res.to_string());
+        return res;
     }
 }
