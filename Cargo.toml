@@ -1,14 +1,16 @@
 [workspace]
 
 members = [
-    "archive",
+    "archive", "bitarray", "bitarray_derive",
     "cache",
-    "dns",
+    "dns", "dns2",
     "encoding",
-    "http", "json", "json_derive",
+    "http", 
+    "json", "json_derive", "net",
     "protobuf",
     "redis",
-    "rsgateway",
+    "rsgateway", 
+    "tcp",
 ]
 
 resolver = "2"

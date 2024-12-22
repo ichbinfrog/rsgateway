@@ -108,7 +108,7 @@ impl Trie {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use std::str::FromStr;
 
     use http::uri::url::Url;

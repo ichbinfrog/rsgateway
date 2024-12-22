@@ -11,7 +11,7 @@ pub struct Block {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
     #[test]
     fn generate_fixed_huffman_decoder() {
