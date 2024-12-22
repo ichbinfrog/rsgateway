@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parenthesized, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Error, Expr,
-    Field, Fields, Ident, Type, Variant,
+    Fields, Ident, Type, Variant, Field
 };
 
 #[derive(Debug)]
@@ -146,20 +146,72 @@ impl Config {
                                 };
                             }
                         }
+                        return quote! {};
                     }
-                    _ => {}
+                    _ => {
+                        return quote! {};
+                    }
                 },
-                _ => {}
+                Fields::Named(ref s) => {
+                    let set = s.named.iter().map(|x| {
+                        if let Some(ident) = &x.ident {
+                            let ty = &x.ty;
+                            return quote_spanned! {
+                                x.span() => 
+                                    let (#ident, kind_l) = #ty::decode(buf)?;
+                                    total_kind_l += kind_l;
+                            };
+                        }
+                        return quote! {};
+                    });
+                    let attr = s.named.iter().map(|x| {
+                        if let Some(ident) = &x.ident {
+                            return quote_spanned! {
+                                x.span() => 
+                                    #ident,
+                            };
+                        }
+                        return quote! {};
+                    });
+
+                    match v.discriminant {
+                        Some((_, ref expr)) => {
+                            if let Expr::Lit(ref expr_lit) = expr {
+                                if let syn::Lit::Int(ref integer) = expr_lit.lit {
+                                    let ident = &v.ident;
+                                    return quote! {
+                                        #integer => {
+                                            let mut total_kind_l = 0;
+                                            #(#set)*
+                                            let res = #name::#ident {
+                                                #(#attr)*
+                                            };
+                                            Ok((res, total_kind_l))
+                                        }
+                                    };
+                                }
+                            }
+                            unimplemented!("holla")
+                        }
+                        _ => {
+                            unimplemented!("ping")
+                        }
+                    };
+                }
+                _ => {
+                    unimplemented!("decoder");
+                }
             }
-            unimplemented!("derive not implemented")
         });
 
-        quote! {
+        let res = quote! {
             #read
             match kind {
                 #(#recurse)*
                 _ => {panic!()}
             }
-        }
+        };
+        eprintln!("{}", res.to_string());
+        return res
     }
 }

@@ -1,5 +1,5 @@
 use crate::buffer::{Buffer, Error, SizedString};
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 pub trait Decoder {
     fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
@@ -16,6 +16,16 @@ impl Decoder for Ipv4Addr {
         Ok((Ipv4Addr::from_bits(bits), n))
     }
 }
+
+impl Decoder for Ipv6Addr {
+    fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>
+        where
+            Self: Sized {
+        let (bits, n) = buf.read_primitive::<u128, 16>()?;
+        Ok((Ipv6Addr::from_bits(bits), n))
+    }
+}
+
 
 impl<T: Decoder> Decoder for Option<T> {
     fn decode(buf: &mut Buffer) -> Result<(Self, usize), Error>

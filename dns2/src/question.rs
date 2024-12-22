@@ -37,7 +37,7 @@ pub struct Question {
     class: QuestionClass,
 }
 
-#[derive(Debug, PartialEq, Encode)]
+#[derive(Debug, PartialEq, Encode, Decode)]
 #[bitarray(repr(u16))]
 #[repr(u16)]
 pub enum RecordType {
@@ -71,19 +71,19 @@ pub enum RecordType {
     } = 15,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Encode, Decode)]
 pub struct RecordHeader {
     question: Question,
     ttl: u32,
     rd_length: u16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Encode, Decode)]
 pub struct Record {
     header: RecordHeader,
 
     // #[bitarray(variant(header.question.kind))]
-    data: RecordType,
+    // data: RecordType,
 }
 
 // impl Decoder for Record {

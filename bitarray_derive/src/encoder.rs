@@ -74,10 +74,10 @@ impl Config {
                                 }
                             }
                         }
-                        unimplemented!("derive not implemented");
+                        unimplemented!("encoder not implemented");
                     }
                     _ => {
-                        unimplemented!("derive not implemented");
+                        unimplemented!("encoder not implemented");
                     }
                 },
                 Fields::Named(ref fields) => {
@@ -115,7 +115,7 @@ impl Config {
                     };
                 }
                 _ => {
-                    unimplemented!("derive not implemented");
+                    unimplemented!("encoder not implemented");
                 }
             }
         });
@@ -125,7 +125,6 @@ impl Config {
                 #(#recurse)*
             }
         };
-        eprintln!("{:?}", res.to_string());
         return res;
     }
 }

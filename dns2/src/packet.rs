@@ -5,6 +5,8 @@ use bitarray::decode::Decoder;
 use bitarray::encode::Encoder;
 use bitarray_derive::{Decode, Encode};
 
+use crate::question::{Question, Record};
+
 pub const MAX_BUF_SIZE: usize = 512;
 pub const MAX_LABEL_SIZE: usize = 63;
 pub const MAX_QNAME_COMPRESSION_JUMPS: usize = 5;
@@ -156,6 +158,15 @@ impl Decoder for QName {
 
         Ok((QName(res), 0))
     }
+}
+
+#[derive(Debug, PartialEq, Encode)]
+pub struct Packet {
+    pub header: Header,
+    pub questions: Vec<Question>,
+    pub answers: Vec<Record>,
+    pub authorities: Vec<Record>,
+    pub resources: Vec<Record>,
 }
 
 #[cfg(test)]
